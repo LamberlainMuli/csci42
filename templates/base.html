@@ -1,0 +1,16 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+    {% load pwa %}
+    {% progressive_web_app_meta %}
+
+    <link rel="manifest" href="manifest.json">
+    <head>
+        <title>Ukay</title>
+        <meta name="description" content="Ukay - Your go-to platform for all your needs.">
+        <meta name="keywords" content="Ukay, platform, needs, services">
+    </head>
+    <body>
+        {% block content %}{% endblock %}
+    </body>
+</html>

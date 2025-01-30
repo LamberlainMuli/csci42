@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>Marketplace Home</h1>
+    <p>Welcome to the home page!</p>
+    <p>Here you can find all the items that are available for sale.</p>
+    <p>Click on the links below to view the items:</p>
+    <ul>
+        {% for product in products %}
+            <li><a href="{% url 'marketplace:item' product.id %}">{{ product.name }}</a></li>
+        {% endfor %}
+    </ul>
+{% endblock %}
