@@ -49,3 +49,7 @@ class CustomUser(AbstractUser, PermissionsMixin):
     
     def __str__(self):
         return self.email
+
+    @property
+    def account_age(self):
+        return (timezone.now() - self.date_created).days
