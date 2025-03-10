@@ -53,3 +53,33 @@ class CustomUser(AbstractUser, PermissionsMixin):
     @property
     def account_age(self):
         return (timezone.now() - self.date_created).days
+
+class UserProfile(models.Model):
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='profile')
+
+    # Optional fields
+    # Similar concept as Carousell
+    first_name = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        validators=[RegexValidator(r'^[a-zA-Z\s\-]+$', 'First name must contain only letters, spaces, or hyphens')]
+    )
+    last_name = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        validators=[RegexValidator(r'^[a-zA-Z\s\-]+$', 'Last name must contain only letters, spaces, or hyphens')]
+    )
+    bio = models.TextField(null=True, blank=True)
+    profile_picture = models.ImageField(null=True, blank=True, upload_to="profile_pictures/")
+    contact_number = models.CharField(
+        max_length=11,
+        null=True,
+        blank=True,
+        validators=[RegexValidator(r'^09\d{9}$', 'Enter a valid mobile number starting with 09 followed by 9 digits')]
+    )
+    location = models.CharField(max_length=255, blank=True, null=True)
+
+    def __str__(self):
+        return self.user.username
