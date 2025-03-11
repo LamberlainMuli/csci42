@@ -21,4 +21,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('pwa.urls')),
     path('', include('marketplace.urls')),
+    path('', include('user.urls')),
 ]
