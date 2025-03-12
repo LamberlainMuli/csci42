@@ -3,3 +3,5 @@ django==5.0
 python-dotenv
 pillow
 djlint
+onnxruntime
+rembg
