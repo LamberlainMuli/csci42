@@ -31,7 +31,7 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
     fields = ['title', 'description', 'price', 'size', 'color', 'material', 'category', 'condition', 'is_sold']
 
     def form_valid(self, form):
-        form.instance.seller = self.request.user 
+        form.instance.seller = self.request.user #i think i need to add here if da user is ACTUALLY a seller dats y buyers can still make stuff ata lMAO
         return super().form_valid(form)
 
     def get_success_url(self):
