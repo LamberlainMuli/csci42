@@ -7,9 +7,6 @@
   {% if user.is_authenticated %}
     <p>Welcome, {{ user.username }}!</p>
     <a href="{% url 'marketplace:product-create' %}" class="create-product-btn">Create Product</a>
-  {% else %}
-    <a href="{% url 'user:login' %}">Login</a>
-    <a href="{% url 'user:register' %}">Register</a>
   {% endif %}
   <form method="GET" action="{% url 'marketplace:home' %}">
     <input type="text" name="q" placeholder="Search products..." value="{{ request.GET.q }}" />

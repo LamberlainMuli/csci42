@@ -37,7 +37,7 @@
     }
     /* Prevent content from being hidden behind the navbar */
     .content {
-      margin-top: 60px; /* Adjust based on your navbar's height */
+      margin-top: 40px; /* Adjust based on your navbar's height */
     }
   }
   

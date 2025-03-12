@@ -1,8 +1,9 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import (
     login as auth_login, 
-    authenticate
+    authenticate,
 )
+from django.contrib.auth import logout as auth_logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -33,6 +34,13 @@ def login(request):
     else:
         form = AuthenticationForm()
     return render(request, 'user-management/login.html', {'form': form})
+
+def logout(request):
+    if request.user.is_authenticated:
+        auth_logout(request)
+        messages.success(request, 'You have been logged out.')
+    return redirect('user:login')
+
 
 def profile(request):
     profile = request.user.profile

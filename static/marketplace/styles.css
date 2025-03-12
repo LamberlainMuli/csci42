@@ -67,7 +67,7 @@ svg {
 }
 .search-results {
 	display: grid;
-	grid-template-columns: repeat(2, 1fr); /* Creates 2 equal columns */
+	grid-template-columns: repeat(4, 1fr); /* Creates 2 equal columns */
 	gap: 20px; /* Adjust spacing between items */
 	padding: 20px;
 }
