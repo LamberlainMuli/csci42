@@ -1,0 +1,15 @@
+{% extends 'base.html' %} {% block content %} {% load static %}
+
+<link rel="stylesheet" type="text/css" href="{% static 'marketplace/styles.css' %}" />
+
+<div class="product-form-container">
+    <h1 class="form-title">Update Product</h1>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Save Changes</button>
+    </form>
+</div>
+
+{% endblock %}

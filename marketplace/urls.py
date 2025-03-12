@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import HomePage, ProductDetailView, ProductCreateView, ProductUpdateView, ProductDeleteView
+from .views import *
 
 app_name = 'marketplace'  # This registers the namespace
 

@@ -16,6 +16,7 @@
 	<p><strong>Created At:</strong> {{ product.created_at }}</p>
 	<p><strong>Updated At:</strong> {{ product.updated_at }}</p>
 	<p><strong>Status:</strong> {% if product.is_sold %} Sold {% else %} Available {% endif %}</p>
+	
 </div>
 
 <div class="product-actions horizontal-container">
@@ -29,5 +30,8 @@
 	</button>
 	<button class="product-actions-chat">Chat</button>
 	<button class="product-actions-cart">Add to cart</button>
+	<p>Product ID: {{ product.pk }}</p> 
+	<p><a href="{% url 'marketplace:product-update' product.pk %}">Update product</a></p>
+	<p><a href="{% url 'marketplace:home' %}">Back to Home</a></p>
 </div>
 {% endblock %}
