@@ -18,7 +18,7 @@ def register(request):
             UserProfile.objects.create(user=user) # Create UserProfile for user
             auth_login(request, user)
             messages.success(request, "Registration succcessful!")
-            return redirect('profile')
+            return redirect('user:profile')
     else:
         form = CustomUserRegistrationForm()
     return render(request, 'user-management/register.html', {'form': form})
@@ -29,7 +29,7 @@ def login(request):
         if form.is_valid():
             user = form.get_user()
             auth_login(request, user)
-            return redirect('profile')
+            return redirect('user:profile')
     else:
         form = AuthenticationForm()
     return render(request, 'user-management/login.html', {'form': form})
@@ -47,7 +47,7 @@ def update_profile(request):
         if form.is_valid():
             form.save()
             messages.success(request, 'Profile updated successfully!')
-            return redirect('profile')
+            return redirect('user:profile')
     else:
         form = UserProfileForm(instance=profile)
 

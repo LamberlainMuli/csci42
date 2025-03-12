@@ -14,7 +14,7 @@
     <p>Bio: {{ profile.bio }}</p>
     <p>Location: {{ profile.location }}</p>
     <p>Contact Number: {{ profile.contact_number }}</p>
-    <p><a href="{% url 'update_profile' %}">Edit Profile</a></p>
+    <p><a href="{% url 'user:update_profile' %}">Edit Profile</a></p>
 
     <p><a href="{% url 'marketplace:home' %}">Visit marketplace!</a></p>
 </body>
