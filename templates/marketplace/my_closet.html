@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>My Closet (Private Items)</h1>
+<hr>
+{% for product in closet_products %}
+  <div class="closet-product">
+    <h2>
+      <a href="{% url 'marketplace:product-detail' product.pk %}">{{ product.title }}</a>
+    </h2>
+    {% if product.primary_image %}
+      <img src="{{ product.primary_image.image.url }}" alt="{{ product.title }}" style="max-width:200px;">
+    {% else %}
+      <p>No image available</p>
+    {% endif %}
+    <p>Created: {{ product.created_at }}</p>
+    <p>Status: Private</p>
+    <div class="closet-actions">
+      <button onclick="location.href='{% url 'marketplace:product-update' product.pk %}'">Edit</button>
+      <button onclick="location.href='{% url 'marketplace:product-delete' product.pk %}'">Delete</button>
+    </div>
+  </div>
+{% empty %}
+  <p>No private items found.</p>
+{% endfor %}
+{% endblock content %}

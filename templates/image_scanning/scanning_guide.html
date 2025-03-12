@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<h1>Clothing Scanning Guide</h1>
+<hr>
+<p>Follow these tips for a good photo:</p>
+<ul>
+    <li>Use soft, even lighting.</li>
+    <li>Avoid bright reflections or harsh shadows.</li>
+    <li>Ensure high contrast between the clothing and background.</li>
+    <li>Position the clothing clearly in the frame.</li>
+</ul>
+<p>
+  <a href="{% url 'image_scanning:upload_image' %}">Start Scanning (File Upload)</a>
+</p>
+{% endblock content %}

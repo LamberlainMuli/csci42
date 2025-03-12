@@ -1,21 +1,39 @@
-{% extends 'base.html' %} {% block content %} {% load static %}
-
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
 <link rel="stylesheet" type="text/css" href="{% static 'marketplace/styles.css' %}" />
 
 <div class="product-details">
-    <h1 class="product-title">Update Product</h1>
-
-    <form method="post" enctype="multipart/form-data">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="product-actions-save">Save Changes</button>
-    </form>
+  <h1 class="product-title">Update Product</h1>
+  
+  {# Display the current primary image if available #}
+  <div class="current-image">
+    <h3>Current Image:</h3>
+    {% if primary_image %}
+      <img src="{{ primary_image.image.url }}" alt="{{ object.title }}" style="max-width:300px;">
+    {% else %}
+      <p>No image available.</p>
+    {% endif %}
+  </div>
+  
+  {# Form to update product details #}
+  <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button type="submit" class="product-actions-save">Save Changes</button>
+  </form>
+  
+  {# Button to initiate image replacement via the scanning pipeline #}
+  <div class="replace-image">
+    <button onclick="location.href='{% url 'marketplace:replace_product_image' object.pk %}'">
+      Replace Image
+    </button>
+  </div>
 </div>
 
 <div class="product-actions horizontal-container">
-	<button class="product-actions-home" onclick="location.href='{% url 'marketplace:home' %}'">
-		Back to Home
-	</button>
+  <button class="product-actions-home" onclick="location.href='{% url 'marketplace:home' %}'">
+    Back to Home
+  </button>
 </div>
-
 {% endblock %}

@@ -1,8 +1,7 @@
+# marketplace/models.py
 from django.db import models
-from user.models import CustomUser
-from django.urls import *
-from django.conf import *
-
+from django.conf import settings
+from django.urls import reverse
 
 class Product(models.Model):
     CATEGORY_CHOICES = [
@@ -12,7 +11,7 @@ class Product(models.Model):
         ('OUTERWEAR', 'Outerwear'),
         ('ACCESSORIES', 'Accessories'),
     ]
-    
+
     CONDITION_CHOICES = [
         ('NWT', 'New with tags'),
         ('EU', 'Excellent used'),
@@ -23,22 +22,23 @@ class Product(models.Model):
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
     description = models.TextField()
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    size = models.CharField(max_length=20)
-    color = models.CharField(max_length=50)
-    material = models.CharField(max_length=100)
-    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
-    condition = models.CharField(max_length=3, choices=CONDITION_CHOICES)
+    # Make price optional. For private products, no price is needed. 
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    size = models.CharField(max_length=20, null=True, blank=True)
+    color = models.CharField(max_length=50, null=True, blank=True)
+    material = models.CharField(max_length=100, null=True, blank=True)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, null=True, blank=True)
+    condition = models.CharField(max_length=3, choices=CONDITION_CHOICES, null=True, blank=True)
+    is_sold = models.BooleanField(default=False)
+    is_public = models.BooleanField(default=True, help_text="Uncheck for a private item (personal closet)")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    is_sold = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.title} - {self.get_category_display()}"
-    
+        return f"{self.title}"
+
     def get_absolute_url(self):
-        return reverse('product-detail', kwargs={'pk': self.pk})
-    
+        return reverse('marketplace:product-detail', kwargs={'pk': self.pk})
 
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='images')

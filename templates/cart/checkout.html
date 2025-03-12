@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<h1>Checkout</h1>
+<hr>
+
+{% if cart.cart_items.count == 0 %}
+  <p>You have no items to checkout.</p>
+{% else %}
+  <p>Total items: {{ cart.total_items }}</p>
+  <p>Total price: {{ cart.total_price }}</p>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Qty</th>
+        <th>Unit Price</th>
+        <th>Subtotal</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in cart_items %}
+        <tr>
+          <td>{{ item.product.title }}</td>
+          <td>{{ item.quantity }}</td>
+          <td>{{ item.product.price }}</td>
+          <td>{{ item.product.price|floatformat:2|add:item.quantity|floatformat:2 }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  
+  <br>
+  <form method="POST">
+    {% csrf_token %}
+    <button type="submit">Pay Now</button>
+  </form>
+{% endif %}
+
+{% endblock content %}

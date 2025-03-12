@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Advanced Image Editor</h1>
+<hr>
+<p>
+  Use the brush tool below to adjust the processed image manually.<br>
+  <strong>Remove</strong> erases parts (makes them transparent) using the destination‐out mode.<br>
+  <strong>Add</strong> restores the original image by sampling the underlying base image.<br>
+  Use the "+" and "−" buttons to change the brush size.<br>
+  Use the "Undo" and "Redo" buttons to step backward or forward.<br>
+  For mobile, toggle between <strong>Edit</strong> (brush mode) and <strong>Drag</strong> (panning) via the toggle button.
+</p>
+
+<div>
+  <button onclick="setBrushMode('remove')">Remove</button>
+  <button onclick="setBrushMode('add')">Add</button>
+  <button onclick="increaseBrush()">+</button>
+  <button onclick="decreaseBrush()">−</button>
+  <button onclick="undo()">Undo</button>
+  <button onclick="redo()">Redo</button>
+  <button onclick="toggleInteractionMode()">Toggle Mode</button>
+  <div>
+    <span id="modeLabel">Brush Mode: None</span> | 
+    <span id="interactionModeLabel">Interaction Mode: edit</span> | 
+    <span id="brushSizeLabel">Brush Size: 20</span> | 
+    <span id="scaleLabel">Scale: 1.0</span>
+  </div>
+</div>
+<br>
+<canvas id="editCanvas" style="border:1px solid #ccc;"></canvas>
+<br>
+<button onclick="saveEditedImage()">Save Edited Image</button>
+
+<form id="editForm" method="POST" action="{% url 'image_scanning:edit_image' uploaded.id %}">
+  {% csrf_token %}
+  <input type="hidden" name="edited_image" id="editedImageInput">
+</form>
+
+<script>
+let canvas, ctx, img;
+let drawing = false;
+let brushSize = 20;
+let brushMode = null;  // "add" or "remove"
+let interactionMode = "edit"; // "edit" (brush) or "drag" (panning)
+let scale = 1.0;
+let offsetX = 0, offsetY = 0;
+let startPanX = 0, startPanY = 0;
+let panning = false;
+let undoStack = [];
+let redoStack = [];
+let lastX = null, lastY = null; // For "add" mode strokes
+
+// Initialize canvas: load base image (processed image)
+function initCanvas() {
+  canvas = document.getElementById('editCanvas');
+  ctx = canvas.getContext('2d');
+  img = new Image();
+  img.onload = function() {
+    canvas.width = img.width;
+    canvas.height = img.height;
+    redrawCanvas();
+    pushUndo();
+  };
+  img.src = "{{ processed_url }}";
+}
+
+// Redraw canvas with current transform (scale and offset)
+function redrawCanvas() {
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+  
+  ctx.save();
+  ctx.translate(offsetX, offsetY);
+  ctx.scale(scale, scale);
+  ctx.drawImage(img, 0, 0);
+  ctx.restore();
+}
+
+// Undo/Redo functionality using full canvas snapshots.
+function pushUndo() {
+  undoStack.push(canvas.toDataURL("image/png"));
+  if (undoStack.length > 10) { undoStack.shift(); }
+  redoStack = [];
+}
+function restoreFrom(dataURL) {
+  let tempImg = new Image();
+  tempImg.onload = function() {
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(tempImg, 0, 0);
+    ctx.restore();
+  };
+  tempImg.src = dataURL;
+}
+function undo() {
+  if (undoStack.length > 1) {
+    redoStack.push(undoStack.pop());
+    restoreFrom(undoStack[undoStack.length - 1]);
+  }
+}
+function redo() {
+  if (redoStack.length > 0) {
+    let state = redoStack.pop();
+    undoStack.push(state);
+    restoreFrom(state);
+  }
+}
+
+// Set brush mode ("add" or "remove")
+function setBrushMode(mode) {
+  brushMode = mode;
+  document.getElementById('modeLabel').textContent = "Brush Mode: " + mode;
+  // Reset last coordinates for add strokes.
+  lastX = null;
+  lastY = null;
+}
+
+// Toggle between "edit" (brush) and "drag" (panning) for mobile.
+function toggleInteractionMode() {
+  interactionMode = (interactionMode === "edit") ? "drag" : "edit";
+  document.getElementById('interactionModeLabel').textContent = "Interaction Mode: " + interactionMode;
+}
+
+// Increase/decrease brush size.
+function increaseBrush() {
+  brushSize += 5;
+  document.getElementById('brushSizeLabel').textContent = "Brush Size: " + brushSize;
+}
+function decreaseBrush() {
+  brushSize = Math.max(5, brushSize - 5);
+  document.getElementById('brushSizeLabel').textContent = "Brush Size: " + brushSize;
+}
+
+// Zoom functions.
+function zoomIn() { setScale(scale * 1.1); }
+function zoomOut() { setScale(scale * 0.9); }
+function setScale(newScale) {
+  scale = Math.max(0.1, Math.min(5.0, newScale));
+  document.getElementById('scaleLabel').textContent = "Scale: " + scale.toFixed(2);
+  redrawCanvas();
+}
+
+// Handle events for drawing or panning.
+function handleStart(e) {
+  e.preventDefault();
+  let clientX = e.clientX || e.touches[0].clientX;
+  let clientY = e.clientY || e.touches[0].clientY;
+  if (interactionMode === "drag") {
+    panning = true;
+    startPanX = clientX - offsetX;
+    startPanY = clientY - offsetY;
+  } else if (interactionMode === "edit" && brushMode) {
+    pushUndo();
+    drawing = true;
+    // For "add" mode, reset lastX, lastY if starting a new stroke.
+    if (brushMode === "add") {
+      lastX = null;
+      lastY = null;
+    }
+    draw(e); 
+  }
+}
+function handleMove(e) {
+  e.preventDefault();
+  let clientX = e.clientX || (e.touches && e.touches[0].clientX);
+  let clientY = e.clientY || (e.touches && e.touches[0].clientY);
+  if (interactionMode === "drag" && panning) {
+    offsetX = clientX - startPanX;
+    offsetY = clientY - startPanY;
+    redrawCanvas();
+  } else if (interactionMode === "edit" && drawing && brushMode) {
+    draw(e);
+  }
+}
+function handleEnd(e) {
+  e.preventDefault();
+  if (interactionMode === "drag") {
+    panning = false;
+  } else if (interactionMode === "edit" && drawing) {
+    drawing = false;
+    // Clear last coordinates so the next stroke starts fresh.
+    lastX = null;
+    lastY = null;
+  }
+}
+
+// Draw on canvas depending on brush mode.
+function draw(e) {
+  const rect = canvas.getBoundingClientRect();
+  let clientX = e.clientX || (e.touches && e.touches[0].clientX);
+  let clientY = e.clientY || (e.touches && e.touches[0].clientY);
+  let x = (clientX - rect.left - offsetX) / scale;
+  let y = (clientY - rect.top - offsetY) / scale;
+
+  ctx.lineWidth = brushSize;
+  ctx.lineCap = "round";
+
+  if (brushMode === "remove") {
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.strokeStyle = "rgba(0,0,0,1)";
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  } else if (brushMode === "add") {
+    // In "add" mode, we want to restore the base image.
+    // We'll draw small circles from the original image along the stroke.
+    ctx.globalCompositeOperation = "source-over";
+    // If this is the first add point, simply draw a circle.
+    if (lastX === null || lastY === null) {
+      ctx.drawImage(img, x - brushSize/2, y - brushSize/2, brushSize, brushSize, x - brushSize/2, y - brushSize/2, brushSize, brushSize);
+    } else {
+      // Interpolate between last point and current point.
+      let dist = Math.hypot(x - lastX, y - lastY);
+      let steps = Math.ceil(dist / (brushSize/2));
+      for (let i = 1; i <= steps; i++) {
+        let interpX = lastX + (x - lastX) * i / steps;
+        let interpY = lastY + (y - lastY) * i / steps;
+        ctx.drawImage(img, interpX - brushSize/2, interpY - brushSize/2, brushSize, brushSize, interpX - brushSize/2, interpY - brushSize/2, brushSize, brushSize);
+      }
+    }
+    lastX = x;
+    lastY = y;
+  }
+}
+
+function saveEditedImage() {
+  let maxDim = 1024;
+  let w = canvas.width;
+  let h = canvas.height;
+  let scaleFactor = Math.min(1, maxDim / Math.max(w, h));
+  let tempCanvas = document.createElement("canvas");
+  tempCanvas.width = w * scaleFactor;
+  tempCanvas.height = h * scaleFactor;
+  let tctx = tempCanvas.getContext("2d");
+  tctx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+  const dataURL = tempCanvas.toDataURL("image/png");
+  document.getElementById("editedImageInput").value = dataURL;
+  document.getElementById("editForm").submit();
+}
+
+function setupCanvasEvents() {
+  canvas.addEventListener("mousedown", handleStart);
+  canvas.addEventListener("mousemove", handleMove);
+  canvas.addEventListener("mouseup", handleEnd);
+  canvas.addEventListener("mouseleave", handleEnd);
+  canvas.addEventListener("touchstart", handleStart);
+  canvas.addEventListener("touchmove", handleMove);
+  canvas.addEventListener("touchend", handleEnd);
+}
+
+window.addEventListener("load", function() {
+  initCanvas();
+  setupCanvasEvents();
+});
+</script>
+{% endblock content %}
