@@ -1,40 +1,58 @@
-{% extends 'base.html' %} {% block content %} {% load static %}
-
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
 <link rel="stylesheet" type="text/css" href="{% static 'marketplace/styles.css' %}" />
 
-<div class="product-img-carousell"></div>
-
 <div class="product-details">
-	<h1 class="product-title">{{ product.title }}</h1>
-	<p><strong>Seller:</strong> {{ product.seller.username }}</p>
-	<p><strong>Description:</strong> {{ product.description }}</p>
-	<p><strong>Price:</strong> ${{ product.price }}</p>
-	<p><strong>Size:</strong> {{ product.size }}</p>
-	<p><strong>Color:</strong> {{ product.color }}</p>
-	<p><strong>Material:</strong> {{ product.material }}</p>
-	<p><strong>Category:</strong> {{ product.get_category_display }}</p>
-	<p><strong>Condition:</strong> {{ product.get_condition_display }}</p>
-	<p><strong>Created At:</strong> {{ product.created_at }}</p>
-	<p><strong>Updated At:</strong> {{ product.updated_at }}</p>
-	<p><strong>Status:</strong> {% if product.is_sold %} Sold {% else %} Available {% endif %}</p>	
+  <h1 class="product-title">{{ product.title }}</h1>
+  
+  {% if primary_image %}
+    <img src="{{ primary_image.image.url }}" alt="{{ product.title }}" style="max-width:300px;">
+  {% else %}
+    <p>No image available.</p>
+  {% endif %}
+
+  <p><strong>Seller:</strong> {{ product.seller.username }}</p>
+  <p><strong>Description:</strong> {{ product.description }}</p>
+  <p><strong>Price:</strong> ${{ product.price }}</p>
+  <p><strong>Size:</strong> {{ product.size }}</p>
+  <p><strong>Color:</strong> {{ product.color }}</p>
+  <p><strong>Material:</strong> {{ product.material }}</p>
+  <p><strong>Category:</strong> {{ product.get_category_display }}</p>
+  <p><strong>Condition:</strong> {{ product.get_condition_display }}</p>
+  <p><strong>Created At:</strong> {{ product.created_at }}</p>
+  <p><strong>Updated At:</strong> {{ product.updated_at }}</p>
+  <p><strong>Status:</strong> {% if product.is_sold %} Sold {% else %} Available {% endif %}</p>
 </div>
 
 <div class="product-actions horizontal-container">
-	<button class="product-actions-home" onclick="location.href='{% url 'marketplace:home' %}'">
-		Back to Home
-	</button>
-	<button class="product-actions-save vertical-container">
-		<div class="icon-container">
-			<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="{1.5}" stroke="currentColor" className="size-6">
-				<path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 0 0-.182.557l1.285 5.385a.562.562 0 0 1-.84.61l-4.725-2.885a.562.562 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.84-.61l1.285-5.386a.562.562 0 0 0-.182-.557l-4.204-3.602a.562.562 0 0 1 .321-.988l5.518-.442a.563.563 0 0 0 .475-.345L11.48 3.5Z" />
-			</svg>
-		</div>
-		<p>Save for later</p>
-	</button>
-	<button class="product-actions-chat">Chat</button>
-	<button class="product-actions-cart">Add to cart</button>
-	<button class="product-actions-update" onclick="location.href='{% url 'marketplace:product-update' product.pk %}'">
-		Edit Product
-	</button>
+  <button class="product-actions-home" onclick="location.href='{% url 'marketplace:home' %}'">
+    Back to Home
+  </button>
+
+  {% if product.is_public %}
+    {% if not user.is_authenticated or product.seller.id != user.id %}
+      <button class="product-actions-save vertical-container">
+        <a href="{% url 'cart:add_to_saved' product.id %}">
+          <div class="icon-container">
+            <!-- SVG icon here -->
+          </div>
+          <p>Save for later</p>
+        </a>
+      </button>
+      <button class="product-actions-cart">
+        <a href="{% url 'cart:add_to_cart' product.id %}">Add to cart</a>
+      </button>
+    {% endif %}
+  {% endif %}
+
+  <button class="product-actions-chat">Chat</button>
+
+  {% if user.is_authenticated and product.seller.id == user.id %}
+    <button class="product-actions-update" onclick="location.href='{% url 'marketplace:product-update' product.pk %}'">
+      Edit Product
+    </button>
+    <a href="{% url 'marketplace:replace_product_image' product.pk %}">Replace Image</a>
+  {% endif %}
 </div>
-{% endblock %}
+{% endblock content %}

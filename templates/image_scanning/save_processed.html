@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Save Processed Image</h1>
+<hr>
+
+<p>Here is your original image (used as a placeholder for processed):</p>
+<img src="{{ uploaded.original_image.url }}" alt="Original Image" style="max-width: 300px;">
+
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <p>Select a product if you want to attach this image to a product listing in the marketplace. Otherwise, leave it blank for personal use.</p>
+    <button type="submit">Save</button>
+</form>
+{% endblock content %}

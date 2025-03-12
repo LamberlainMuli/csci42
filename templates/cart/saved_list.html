@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<h1>Your Saved Items</h1>
+<hr>
+
+{% if saved_items.count == 0 %}
+  <p>You haven't saved any items yet.</p>
+{% else %}
+  <ul>
+    {% for saved in saved_items %}
+      <li>
+        {{ saved.product.title }} - ${{ saved.product.price }}
+        <a href="{% url 'cart:remove_from_saved' saved.id %}">Remove</a>
+        <!-- Optional link to add to cart directly -->
+        <a href="{% url 'cart:add_to_cart' saved.product.id %}">Add to cart</a>
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}
+
+{% endblock content %}

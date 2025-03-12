@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1>Processed Image Preview</h1>
+<hr>
+<h3>Original Image:</h3>
+<img src="{{ uploaded.original_image.url }}" alt="Original Image" style="max-width:300px;">
+<h3>Processed Image:</h3>
+<img src="{{ processed_url }}" alt="Processed Image" style="max-width:300px;">
+
+<form method="POST">
+    {% csrf_token %}
+    {# Pass along product attachment info via hidden fields #}
+    {% if request.session.attach_product_id %}
+      <input type="hidden" name="attach_product_id" value="{{ request.session.attach_product_id }}">
+    {% endif %}
+    {% if request.session.replace_product_id %}
+      <input type="hidden" name="replace_product_id" value="{{ request.session.replace_product_id }}">
+    {% endif %}
+    <button type="submit" name="confirm">Confirm Processing</button>
+    <button type="submit" name="retake">Retake</button>
+</form>
+
+<br>
+<a href="{% url 'image_scanning:edit_image' uploaded.id %}">Edit Image Manually</a>
+{% endblock content %}

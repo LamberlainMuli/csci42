@@ -3,24 +3,30 @@
 <html lang="en">
     {% load pwa %}
     {% progressive_web_app_meta %}
-
     <link rel="manifest" href="manifest.json">
     <head>
         <title>Ukay</title>
         <meta name="description" content="Ukay - Your go-to platform for all your needs.">
         <meta name="keywords" content="Ukay, platform, needs, services">
+        <!-- Load style.css -->
+        <link rel="stylesheet" href="{% static 'css/style.css' %}">
     </head>
     <body>
-          <!-- Navigation Bar -->
+        <!-- Navigation Bar -->
         <nav class="navbar">
             <ul>
-            <li><a href="/">Home</a></li>
-            <li><a href="{% url 'home'}">Marketplace</a></li>
-            <li><a href="{% url 'login'}">Login</a></li>
-
+                <li><a href="/">Home</a></li>
+                {% if user.is_authenticated %}
+                    <li><a href="{% url 'user:profile' %}">Profile</a></li>
+                    <li><a href="{% url 'cart:cart_list' %}">Cart</a></li>
+                    <li><a href="{% url 'cart:saved_list' %}">Saved</a></li>
+                {% else %}
+                    <li><a href="{% url 'user:login' %}">Login</a></li>
+                {% endif %}
             </ul>
         </nav>
-
+        <div class="content">
         {% block content %}{% endblock %}
+        </div>
     </body>
 </html>
