@@ -41,7 +41,7 @@ A sustainable fashion marketplace with virtual styling capabilities, promoting e
    pip install -r requirements.txt
    ```
 4. **Environment Configuration**
-   Create a `.env` file in the project root:
+   Create a `.env` file in the project root (IMPORTANT: Run this in Git Bash):
    ```bash
    echo "DEBUG=True" >> .env
    echo "SECRET_KEY=$(python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')" >> .env
