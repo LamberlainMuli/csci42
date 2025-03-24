@@ -1,0 +1,344 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<main class="container mt-4">
+  <h1>Create Your Outfit</h1>
+  <form method="POST">
+    {% csrf_token %}
+    <input type="hidden" name="outfit_data" id="outfit_data">
+
+    <!-- Available Items (draggable thumbnails) -->
+    <div id="available-items" class="row">
+      {% for item in available_items %}
+        {% if item.primary_image %}
+          <div class="col-3 col-md-2 mb-2">
+            <img src="{{ item.primary_image.image.url }}"
+                 alt="{{ item.title }}"
+                 data-id="{{ item.id }}"
+                 draggable="true"
+                 class="img-fluid available-item"
+                 style="cursor: move; border: 1px solid #ddd; border-radius: 5px;">
+          </div>
+        {% endif %}
+      {% empty %}
+        <p>No items available.</p>
+      {% endfor %}
+    </div>
+
+    <!-- Canvas for outfit composition -->
+    <section class="mb-3">
+      <h2>Canvas</h2>
+      <div id="canvas" 
+           style="position: relative; 
+                  max-width: 500px; 
+                  width: 100%; 
+                  height: auto; 
+                  aspect-ratio: 1 / 1; 
+                  border: 2px dashed #ccc; 
+                  background: #f9f9f9;">
+      </div>
+    </section>
+
+    <!-- Controls -->
+    <aside class="mb-3">
+      <button type="submit" class="btn btn-primary">Save Outfit</button>
+      <button type="button" id="reset" class="btn btn-secondary">Reset</button>
+      <button type="button" id="scale-up" class="btn btn-outline-secondary">Scale Up</button>
+      <button type="button" id="scale-down" class="btn btn-outline-secondary">Scale Down</button>
+      <button type="button" id="move-up" class="btn btn-outline-secondary">Move Up</button>
+      <button type="button" id="move-down" class="btn btn-outline-secondary">Move Down</button>
+      <!-- No Download button here -->
+    </aside>
+  </form>
+</main>
+
+<!-- Include interact.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/interact.js/1.10.11/interact.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const canvas = document.getElementById('canvas');
+    const outfitDataInput = document.getElementById('outfit_data');
+
+    // We will frequently need the actual canvas dimensions
+    function getCanvasSize() {
+        // Because we used "width: 100%; aspect-ratio: 1/1", the actual rendered size is:
+        const rect = canvas.getBoundingClientRect();
+        return { width: rect.width, height: rect.height };
+    }
+
+    function getDraggables() {
+        return canvas.querySelectorAll('.draggable');
+    }
+
+    // DRAG from available items
+    document.querySelectorAll('#available-items img').forEach(item => {
+        item.addEventListener('dragstart', function(e) {
+            e.dataTransfer.setData('text/plain', JSON.stringify({
+                id: item.dataset.id,
+                src: item.src,
+                alt: item.alt
+            }));
+        });
+    });
+
+    // DROP onto canvas
+    canvas.addEventListener('dragover', e => e.preventDefault());
+    canvas.addEventListener('drop', function(e) {
+        e.preventDefault();
+        const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+        // Avoid duplicates
+        if (canvas.querySelector(`.draggable[data-id="${data.id}"]`)) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
+
+        // Create container
+        const container = document.createElement('div');
+        container.classList.add('draggable');
+        container.dataset.id = data.id;
+        // Shift slightly so center is near drop
+        const initX = offsetX - 40;
+        const initY = offsetY - 40;
+        container.dataset.x = initX;
+        container.dataset.y = initY;
+        container.dataset.scale = 1;
+
+        // zIndex approach: set new item on top
+        let maxZ = 0;
+        getDraggables().forEach(div => {
+            const zVal = parseInt(div.dataset.z) || 0;
+            if (zVal > maxZ) maxZ = zVal;
+        });
+        container.dataset.z = maxZ + 1;
+        container.style.zIndex = maxZ + 1;
+        container.style.position = 'absolute';
+        container.style.left = '0';
+        container.style.top = '0';
+        container.style.transform = `translate(${initX}px, ${initY}px) scale(1)`;
+
+        // Inner image
+        const img = document.createElement('img');
+        img.src = data.src;
+        img.alt = data.alt;
+        img.classList.add('item-image');
+        img.style.width = '80px';
+        img.style.height = 'auto';
+        container.appendChild(img);
+
+        // Add resize handles
+        const handleBL = document.createElement('div');
+        handleBL.classList.add('resize-handle', 'bottom-left');
+        const handleBR = document.createElement('div');
+        handleBR.classList.add('resize-handle', 'bottom-right');
+        container.appendChild(handleBL);
+        container.appendChild(handleBR);
+
+        // On click, mark as selected
+        container.addEventListener('click', function() {
+            getDraggables().forEach(el => el.classList.remove('selected'));
+            container.classList.add('selected');
+        });
+        canvas.appendChild(container);
+    });
+
+    // Interact: Draggable
+    interact('.draggable').draggable({
+        modifiers: [
+            interact.modifiers.restrictRect({
+                restriction: 'parent',
+                endOnly: true
+            })
+        ],
+        listeners: {
+            move: event => {
+                const target = event.target;
+                let x = (parseFloat(target.dataset.x) || 0) + event.dx;
+                let y = (parseFloat(target.dataset.y) || 0) + event.dy;
+                const scale = parseFloat(target.dataset.scale) || 1;
+
+                // use actual canvas size
+                const { width: cW, height: cH } = getCanvasSize();
+                const containerWidth = 80 * scale;
+                const containerHeight = 80 * scale;
+
+                x = Math.min(Math.max(x, 0), cW - containerWidth);
+                y = Math.min(Math.max(y, 0), cH - containerHeight);
+
+                target.dataset.x = x;
+                target.dataset.y = y;
+                target.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+            }
+        }
+    });
+
+    // Interact: Resizable
+    interact('.draggable').resizable({
+        preserveAspectRatio: true,
+        edges: { left: true, right: true, bottom: true, top: true },
+        modifiers: [
+            interact.modifiers.restrictEdges({
+                outer: 'parent',
+                endOnly: true
+            })
+        ],
+        inertia: true,
+        listeners: {
+            move: event => {
+                const target = event.target;
+                let newWidth = event.rect.width;
+                // base width=80 => scale = newWidth/80
+                let newScale = newWidth / 80;
+                if (newScale < 0.1) newScale = 0.1;
+                if (newScale > 2.0) newScale = 2.0;
+
+                target.dataset.scale = newScale;
+
+                let x = parseFloat(target.dataset.x) || 0;
+                let y = parseFloat(target.dataset.y) || 0;
+
+                // bounding
+                const { width: cW, height: cH } = getCanvasSize();
+                const containerWidth = 80 * newScale;
+                const containerHeight = 80 * newScale;
+                x = Math.min(Math.max(x, 0), cW - containerWidth);
+                y = Math.min(Math.max(y, 0), cH - containerHeight);
+
+                target.dataset.x = x;
+                target.dataset.y = y;
+                target.style.transform = `translate(${x}px, ${y}px) scale(${newScale})`;
+            }
+        }
+    });
+
+    // Scale Up
+    document.getElementById('scale-up').addEventListener('click', function() {
+        const selected = document.querySelector('#canvas .draggable.selected');
+        if (selected) {
+            let scale = parseFloat(selected.dataset.scale) || 1;
+            scale += 0.1;
+            if (scale > 2.0) scale = 2.0;
+
+            let x = parseFloat(selected.dataset.x) || 0;
+            let y = parseFloat(selected.dataset.y) || 0;
+
+            selected.dataset.scale = scale;
+            selected.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+        }
+    });
+
+    // Scale Down
+    document.getElementById('scale-down').addEventListener('click', function() {
+        const selected = document.querySelector('#canvas .draggable.selected');
+        if (selected) {
+            let scale = parseFloat(selected.dataset.scale) || 1;
+            scale -= 0.1;
+            if (scale < 0.1) scale = 0.1;
+
+            let x = parseFloat(selected.dataset.x) || 0;
+            let y = parseFloat(selected.dataset.y) || 0;
+
+            selected.dataset.scale = scale;
+            selected.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+        }
+    });
+
+    // Move Up => set z to highest+1
+    document.getElementById('move-up').addEventListener('click', function() {
+        const selected = document.querySelector('#canvas .draggable.selected');
+        if (selected) {
+            let maxZ = 0;
+            getDraggables().forEach(div => {
+                const zVal = parseInt(div.dataset.z) || 0;
+                if (zVal > maxZ) maxZ = zVal;
+            });
+            const newZ = maxZ + 1;
+            selected.dataset.z = newZ;
+            selected.style.zIndex = newZ;
+        }
+    });
+
+    // Move Down => set z=0
+    document.getElementById('move-down').addEventListener('click', function() {
+        const selected = document.querySelector('#canvas .draggable.selected');
+        if (selected) {
+            selected.dataset.z = 0;
+            selected.style.zIndex = 0;
+        }
+    });
+
+    // Save outfit state
+    document.querySelector('form').addEventListener('submit', function() {
+        const outfitItems = Array.from(getDraggables()).map(div => ({
+            product_id: div.dataset.id,
+            x: parseFloat(div.dataset.x) || 0,
+            y: parseFloat(div.dataset.y) || 0,
+            scale: parseFloat(div.dataset.scale) || 1,
+            z_index: parseInt(div.dataset.z) || 0
+        }));
+        outfitDataInput.value = JSON.stringify(outfitItems);
+    });
+
+    // Reset
+    document.getElementById('reset').addEventListener('click', function() {
+        canvas.innerHTML = '';
+        outfitDataInput.value = '';
+    });
+});
+</script>
+
+<style>
+.draggable {
+    width: 80px; /* base container width */
+    position: absolute;
+    user-select: none;
+}
+.draggable.selected {
+    border: 2px dashed blue;
+    box-shadow: 0 0 5px blue;
+    position: relative;
+}
+.draggable.selected::before,
+.draggable.selected::after {
+    content: "";
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: blue;
+    border-radius: 50%;
+}
+.draggable.selected::before {
+    top: -4px;
+    left: -4px;
+}
+.draggable.selected::after {
+    top: -4px;
+    right: -4px;
+}
+.resize-handle {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: blue;
+    border-radius: 50%;
+}
+.resize-handle.bottom-left {
+    bottom: -4px;
+    left: -4px;
+}
+.resize-handle.bottom-right {
+    bottom: -4px;
+    right: -4px;
+}
+.available-item {
+    max-width: 80px;
+    height: auto;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+button {
+    margin-right: 10px;
+    margin-top: 5px;
+}
+</style>
+{% endblock %}

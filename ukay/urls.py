@@ -24,6 +24,7 @@ urlpatterns = [
     path('', include('pwa.urls')),
     path('', include('marketplace.urls')),
     path('', include('user.urls')),
+    path('mix-and-match/', include('mix_and_match.urls', namespace='mix_and_match')),
     path('cart/', include('cart.urls', namespace='cart')),
     path('image-scanning/', include('image_scanning.urls', namespace='image_scanning')),
 ]

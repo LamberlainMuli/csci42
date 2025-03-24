@@ -1,5 +1,3 @@
-# cart/views.py
-
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -24,9 +22,15 @@ def cart_list(request):
     cart = initialize_cart(request.user)
     cart_items = cart.cart_items.select_related('product')
     
-    # We'll pass a form for each cart item so user can update quantity
+    # Attach computed subtotal for each item
+    for item in cart_items:
+        if item.product.price is not None:
+            item.subtotal = item.product.price * item.quantity
+        else:
+            item.subtotal = 0
+
     if request.method == 'POST':
-        # This means a user is updating an item in the cart
+        # User is updating an item's quantity
         item_id = request.POST.get('item_id')
         cart_item = get_object_or_404(CartItem, id=item_id, cart=cart)
         form = CartItemForm(request.POST, instance=cart_item)
@@ -53,7 +57,7 @@ def add_to_cart(request, product_id):
     cart = initialize_cart(request.user)
     product = get_object_or_404(Product, id=product_id)
     
-    # Check if cartitem already exists
+    # Check if cart item already exists
     cart_item, created = CartItem.objects.get_or_create(cart=cart, product=product)
     if not created:
         # If item already in cart, increment quantity
@@ -98,16 +102,21 @@ def remove_from_saved(request, saved_item_id):
 def checkout_view(request):
     """
     Display a summary of all items in the cart
-    with a 'Pay' button that you will integrate
-    with Xendit in the future.
+    with a 'Pay Now' button for future payment integration.
     """
     cart = initialize_cart(request.user)
     cart_items = cart.cart_items.select_related('product')
     
+    # Attach computed subtotal for each item
+    for item in cart_items:
+        if item.product.price is not None:
+            item.subtotal = item.product.price * item.quantity
+        else:
+            item.subtotal = 0
+
     if request.method == 'POST':
-        # A placeholder for future payment logic (e.g. Xendit)
+        # Placeholder for future payment logic (e.g., integration with Xendit)
         messages.success(request, "Pretend we're redirecting to a payment gateway now...")
-        # In a real scenario, we'd redirect to Xendit or process payment here.
         return redirect('cart:cart_list')
 
     context = {

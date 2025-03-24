@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<main class="container mt-4">
+    <h1>Recommended Outfits</h1>
+    <form method="GET" class="mb-3">
+        <div class="row">
+            <div class="col-md-3">
+                <label for="category" class="form-label">Category</label>
+                <select name="category" id="category" class="form-select">
+                    <option value="">All</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat }}" {% if cat == current_category %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="condition" class="form-label">Condition</label>
+                <select name="condition" id="condition" class="form-select">
+                    <option value="">All</option>
+                    {% for cond in conditions %}
+                        <option value="{{ cond }}" {% if cond == current_condition %}selected{% endif %}>{{ cond }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3 align-self-end">
+                <button type="submit" class="btn btn-primary">Apply Filters</button>
+            </div>
+        </div>
+    </form>
+
+    <section class="row">
+        {% for item in recommended_items %}
+            {% if item.primary_image %}
+                <div class="col-3 col-md-2 mb-3">
+                    <img src="{{ item.primary_image.image.url }}"
+                         alt="{{ item.title }}"
+                         class="img-fluid"
+                         style="max-width: 100px; border: 1px solid #ddd; border-radius: 5px;">
+                    <p>{{ item.title }}</p>
+                </div>
+            {% endif %}
+        {% empty %}
+            <p>No recommendations available.</p>
+        {% endfor %}
+    </section>
+</main>
+{% endblock %}

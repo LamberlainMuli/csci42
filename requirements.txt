@@ -5,3 +5,5 @@ pillow
 djlint
 onnxruntime
 rembg
+crispy-bootstrap4
+django-crispy-forms

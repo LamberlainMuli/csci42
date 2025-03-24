@@ -1,40 +1,31 @@
 {% extends 'base.html' %}
 {% block content %}
-<h1>Advanced Image Editor</h1>
-<hr>
-<p>
-  Use the brush tool below to adjust the processed image manually.<br>
-  <strong>Remove</strong> erases parts (makes them transparent) using the destination‐out mode.<br>
-  <strong>Add</strong> restores the original image by sampling the underlying base image.<br>
-  Use the "+" and "−" buttons to change the brush size.<br>
-  Use the "Undo" and "Redo" buttons to step backward or forward.<br>
-  For mobile, toggle between <strong>Edit</strong> (brush mode) and <strong>Drag</strong> (panning) via the toggle button.
-</p>
-
-<div>
-  <button onclick="setBrushMode('remove')">Remove</button>
-  <button onclick="setBrushMode('add')">Add</button>
-  <button onclick="increaseBrush()">+</button>
-  <button onclick="decreaseBrush()">−</button>
-  <button onclick="undo()">Undo</button>
-  <button onclick="redo()">Redo</button>
-  <button onclick="toggleInteractionMode()">Toggle Mode</button>
-  <div>
-    <span id="modeLabel">Brush Mode: None</span> | 
-    <span id="interactionModeLabel">Interaction Mode: edit</span> | 
-    <span id="brushSizeLabel">Brush Size: 20</span> | 
-    <span id="scaleLabel">Scale: 1.0</span>
-  </div>
+<div class="container mt-4">
+    <h1><i class="fas fa-paint-brush"></i> Advanced Image Editor</h1>
+    <hr>
+    <p>Use the brush tool to adjust the image manually. <strong>Remove</strong> erases parts; <strong>Add</strong> restores the original.</p>
+    <div class="btn-group mb-3" role="group">
+        <button class="btn btn-secondary" onclick="setBrushMode('remove')"><i class="fas fa-eraser"></i> Remove</button>
+        <button class="btn btn-secondary" onclick="setBrushMode('add')"><i class="fas fa-plus"></i> Add</button>
+        <button class="btn btn-secondary" onclick="increaseBrush()">+</button>
+        <button class="btn btn-secondary" onclick="decreaseBrush()">−</button>
+        <button class="btn btn-secondary" onclick="undo()"><i class="fas fa-undo"></i> Undo</button>
+        <button class="btn btn-secondary" onclick="redo()"><i class="fas fa-redo"></i> Redo</button>
+        <button class="btn btn-secondary" onclick="toggleInteractionMode()"><i class="fas fa-arrows-alt"></i> Toggle Mode</button>
+    </div>
+    <div class="mb-3">
+        <span id="modeLabel">Brush Mode: None</span> | 
+        <span id="interactionModeLabel">Interaction Mode: edit</span> | 
+        <span id="brushSizeLabel">Brush Size: 20</span> | 
+        <span id="scaleLabel">Scale: 1.0</span>
+    </div>
+    <canvas id="editCanvas" class="img-fluid" style="border:1px solid #ccc;"></canvas>
+    <button class="btn btn-success mt-3" onclick="saveEditedImage()"><i class="fas fa-save"></i> Save Edited Image</button>
+    <form id="editForm" method="POST" action="{% url 'image_scanning:edit_image' uploaded.id %}">
+        {% csrf_token %}
+        <input type="hidden" name="edited_image" id="editedImageInput">
+    </form>
 </div>
-<br>
-<canvas id="editCanvas" style="border:1px solid #ccc;"></canvas>
-<br>
-<button onclick="saveEditedImage()">Save Edited Image</button>
-
-<form id="editForm" method="POST" action="{% url 'image_scanning:edit_image' uploaded.id %}">
-  {% csrf_token %}
-  <input type="hidden" name="edited_image" id="editedImageInput">
-</form>
 
 <script>
 let canvas, ctx, img;

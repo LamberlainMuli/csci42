@@ -3,32 +3,74 @@
 <html lang="en">
     {% load pwa %}
     {% progressive_web_app_meta %}
-    <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="{% url 'manifest' %}">
     <head>
         <title>Ukay</title>
         <meta name="description" content="Ukay - Your go-to platform for all your needs.">
         <meta name="keywords" content="Ukay, platform, needs, services">
-        <!-- Load style.css -->
+        <!-- Bootstrap CSS -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <!-- Font Awesome CSS -->
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+        <!-- Custom CSS -->
         <link rel="stylesheet" href="{% static 'css/style.css' %}">
     </head>
-    <body>
-        <!-- Navigation Bar -->
-        <nav class="navbar">
-            <ul>
-                <li><a href="/">Home</a></li>
-                {% if user.is_authenticated %}
-                    <li><a href="{% url 'user:profile' %}">Profile</a></li>
-                    <li><a href="{% url 'cart:cart_list' %}">Cart</a></li>
-                    <li><a href="{% url 'cart:saved_list' %}">Saved</a></li>
-                    <li><a href="{% url 'marketplace:my-closet' %}">My Closet</a></li>
-                    <li><a href="{% url 'user:logout' %}">Logout</a></li>
-                {% else %}
-                    <li><a href="{% url 'user:login' %}">Login</a></li>
-                {% endif %}
-            </ul>
+    <body class="content-body">
+        <!-- Mobile Navbar (Bottom) -->
+        <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-bottom d-md-none">
+            <div class="container-fluid">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavMobile" aria-controls="navbarNavMobile" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNavMobile">
+                    <ul class="navbar-nav w-100 justify-content-around">
+                        <li class="nav-item"><a class="nav-link" href="{% url 'marketplace:home' %}"><i class="fas fa-home"></i> Home</a></li>
+                        {% if user.is_authenticated %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'user:profile' %}"><i class="fas fa-user"></i> Profile</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'cart:cart_list' %}"><i class="fas fa-shopping-cart"></i> Cart</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'cart:saved_list' %}"><i class="far fa-heart"></i> Saved</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'marketplace:my-closet' %}"><i class="fas fa-closet"></i> My Closet</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'mix_and_match:create_outfit' %}"><i class="fas fa-puzzle-piece"></i> Mix and Match</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'user:logout' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                        {% else %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'user:login' %}"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
         </nav>
+
+        <!-- Desktop Navbar (Top) -->
+        <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top d-none d-md-block">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="{% url 'marketplace:home' %}">Ukay</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDesktop" aria-controls="navbarNavDesktop" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNavDesktop">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item"><a class="nav-link" href="{% url 'marketplace:home' %}"><i class="fas fa-home"></i> Home</a></li>
+                        {% if user.is_authenticated %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'user:profile' %}"><i class="fas fa-user"></i> Profile</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'cart:cart_list' %}"><i class="fas fa-shopping-cart"></i> Cart</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'cart:saved_list' %}"><i class="far fa-heart"></i> Saved</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'marketplace:my-closet' %}"><i class="fas fa-closet"></i> My Closet</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'mix_and_match:create_outfit' %}"><i class="fas fa-puzzle-piece"></i> Mix and Match</a></li>
+                            <li class="nav-item"><a class="nav-link" href="{% url 'user:logout' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                        {% else %}
+                            <li class="nav-item"><a class="nav-link" href="{% url 'user:login' %}"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Content Area -->
         <div class="content">
-        {% block content %}{% endblock %}
+            {% block content %}{% endblock %}
         </div>
+
+        <!-- Bootstrap JS -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     </body>
 </html>

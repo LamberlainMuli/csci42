@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+{% block content %}
+<style>
+  /* For a responsive preview container */
+  #canvas-preview {
+    position: relative;
+    max-width: 500px;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    border: 2px solid #ccc;
+    background: #f9f9f9;
+  }
+  .preview-item {
+    position: absolute;
+    border: 1px solid transparent;
+  }
+</style>
+
+<main class="container mt-4">
+  <h1>Outfit Preview</h1>
+  <section id="canvas-preview">
+    {% for outfit_item in outfit_items %}
+      <!-- final_width was computed in views.py as 80 * scale -->
+      <img src="{{ outfit_item.primary_image_url }}"
+           alt="{{ outfit_item.product.title }}"
+           class="preview-item"
+           style="left: {{ outfit_item.position_x }}px;
+                  top: {{ outfit_item.position_y }}px;
+                  width: {{ outfit_item.final_width }}px;
+                  height: auto;
+                  z-index: {{ outfit_item.z_index }};">
+    {% endfor %}
+  </section>
+  <aside class="mt-3">
+    <a href="{% url 'mix_and_match:edit_outfit' outfit.id %}" class="btn btn-primary">Edit Outfit</a>
+    <a href="{% url 'mix_and_match:download_outfit' outfit.id %}" class="btn btn-outline-primary">Download as PNG</a>
+    <button id="add-overlay" class="btn btn-secondary">Add Overlay</button>
+    <button id="share" class="btn btn-outline-primary">Share</button>
+  </aside>
+</main>
+
+<script>
+document.getElementById('add-overlay').addEventListener('click', function() {
+    alert('Overlay feature coming soon!');
+});
+document.getElementById('share').addEventListener('click', function() {
+    alert('Share feature coming soon!');
+});
+</script>
+{% endblock %}

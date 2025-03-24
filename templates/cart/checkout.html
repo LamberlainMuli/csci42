@@ -1,41 +1,59 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
-<h1>Checkout</h1>
-<hr>
-
-{% if cart.cart_items.count == 0 %}
-  <p>You have no items to checkout.</p>
-{% else %}
-  <p>Total items: {{ cart.total_items }}</p>
-  <p>Total price: {{ cart.total_price }}</p>
+<main class="container mt-4">
+  <header>
+    <h1>Checkout</h1>
+    <hr>
+  </header>
   
-  <table>
-    <thead>
-      <tr>
-        <th>Product</th>
-        <th>Qty</th>
-        <th>Unit Price</th>
-        <th>Subtotal</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for item in cart_items %}
-        <tr>
-          <td>{{ item.product.title }}</td>
-          <td>{{ item.quantity }}</td>
-          <td>{{ item.product.price }}</td>
-          <td>{{ item.product.price|floatformat:2|add:item.quantity|floatformat:2 }}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  
-  <br>
-  <form method="POST">
-    {% csrf_token %}
-    <button type="submit">Pay Now</button>
-  </form>
-{% endif %}
-
-{% endblock content %}
+  {% if cart.cart_items.count == 0 %}
+    <p>Your cart is empty.</p>
+    <a href="{% url 'marketplace:home' %}" class="btn btn-secondary" aria-label="Continue Shopping">
+      <i class="fas fa-home"></i> Continue Shopping
+    </a>
+  {% else %}
+    <section aria-label="Order Summary" class="mb-3">
+      <p>Total items: <strong>{{ cart.total_items }}</strong></p>
+      <p>Total price: <strong>₱{{ cart.total_price|floatformat:2 }}</strong></p>
+      <table class="table table-bordered" aria-label="Checkout Items">
+        <thead class="thead-light">
+          <tr>
+            <th>Product</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Subtotal</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in cart_items %}
+          <tr>
+            <td>{{ item.product.title }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>₱{{ item.product.price|floatformat:2 }}</td>
+            <td>₱{{ item.subtotal|floatformat:2 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+    <section aria-label="Shipping & Payment">
+      <!-- Dummy shipping fields as placeholders -->
+      <form method="POST" novalidate>
+        {% csrf_token %}
+        <div class="form-group">
+          <label for="shippingAddress">Shipping Address</label>
+          <input type="text" id="shippingAddress" name="shipping_address" class="form-control" placeholder="Enter your shipping address" required>
+        </div>
+        <div class="form-group">
+          <label for="contactNumber">Contact Number</label>
+          <input type="tel" id="contactNumber" name="contact_number" class="form-control" placeholder="Enter your contact number" required>
+        </div>
+        <button type="submit" class="btn btn-success btn-lg" aria-label="Pay Now">
+          Pay Now <i class="fas fa-credit-card"></i>
+        </button>
+      </form>
+    </section>
+  {% endif %}
+</main>
+{% endblock %}

@@ -1,4 +1,3 @@
-# marketplace/models.py
 from django.db import models
 from django.conf import settings
 from django.urls import reverse
@@ -22,8 +21,9 @@ class Product(models.Model):
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
     description = models.TextField()
-    # Make price optional. For private products, no price is needed. 
+    # Price is optional for private products.
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    quantity = models.PositiveIntegerField(default=1)  # New field: available quantity
     size = models.CharField(max_length=20, null=True, blank=True)
     color = models.CharField(max_length=50, null=True, blank=True)
     material = models.CharField(max_length=100, null=True, blank=True)

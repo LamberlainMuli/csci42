@@ -1,22 +1,45 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
-<h1>Your Saved Items</h1>
-<hr>
-
-{% if saved_items.count == 0 %}
-  <p>You haven't saved any items yet.</p>
-{% else %}
-  <ul>
-    {% for saved in saved_items %}
-      <li>
-        {{ saved.product.title }} - ${{ saved.product.price }}
-        <a href="{% url 'cart:remove_from_saved' saved.id %}">Remove</a>
-        <!-- Optional link to add to cart directly -->
-        <a href="{% url 'cart:add_to_cart' saved.product.id %}">Add to cart</a>
-      </li>
-    {% endfor %}
-  </ul>
-{% endif %}
-
-{% endblock content %}
+<main class="container mt-4">
+  <header>
+    <h1>Your Saved Items</h1>
+    <hr>
+  </header>
+  
+  {% if saved_items.count == 0 %}
+    <p>You haven't saved any items yet.</p>
+    <a href="{% url 'marketplace:home' %}" class="btn btn-secondary" aria-label="Continue Shopping">
+      <i class="fas fa-home"></i> Continue Shopping
+    </a>
+  {% else %}
+    <section aria-label="Saved Items List">
+      <div class="row">
+        {% for saved in saved_items %}
+        <article class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+          <div class="card h-100">
+            {% if saved.product.images.first %}
+            <img src="{{ saved.product.images.first.image.url }}" alt="{{ saved.product.title }}" class="card-img-top img-fluid">
+            {% else %}
+            <img src="/static/images/placeholder.png" alt="No image available" class="card-img-top img-fluid">
+            {% endif %}
+            <div class="card-body">
+              <h5 class="card-title">{{ saved.product.title }}</h5>
+              <p class="card-text">₱{{ saved.product.price|floatformat:2 }}</p>
+              <div class="d-flex justify-content-between">
+                <a href="{% url 'cart:remove_from_saved' saved.id %}" class="btn btn-danger btn-sm" aria-label="Remove from Saved">
+                  <i class="fas fa-trash-alt"></i>
+                </a>
+                <a href="{% url 'cart:add_to_cart' saved.product.id %}" class="btn btn-primary btn-sm" aria-label="Add to Cart">
+                  <i class="fas fa-shopping-cart"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+</main>
+{% endblock %}
