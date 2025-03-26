@@ -120,6 +120,15 @@ class ProductCreateView(LoginRequiredMixin, CreateView):
     form_class = ProductForm
     template_name = 'marketplace/product_create.html'
 
+    def get_initial(self):
+        initial = super().get_initial()
+        is_public = self.request.GET.get('is_public')
+        if is_public == 'false':
+            initial['is_public'] = False
+        elif is_public == 'true':
+            initial['is_public'] = True
+        return initial
+
     def form_valid(self, form):
         form.instance.seller = self.request.user
         response = super().form_valid(form)

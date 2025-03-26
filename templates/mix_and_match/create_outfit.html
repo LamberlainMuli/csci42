@@ -47,7 +47,7 @@
       <button type="button" id="scale-down" class="btn btn-outline-secondary">Scale Down</button>
       <button type="button" id="move-up" class="btn btn-outline-secondary">Move Up</button>
       <button type="button" id="move-down" class="btn btn-outline-secondary">Move Down</button>
-      <!-- No Download button here -->
+      <button type="button" id="delete-item" class="btn btn-danger">Delete Selected</button>
     </aside>
   </form>
 </main>
@@ -59,18 +59,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const canvas = document.getElementById('canvas');
     const outfitDataInput = document.getElementById('outfit_data');
 
-    // We will frequently need the actual canvas dimensions
+    // Get canvas dimensions
     function getCanvasSize() {
-        // Because we used "width: 100%; aspect-ratio: 1/1", the actual rendered size is:
         const rect = canvas.getBoundingClientRect();
         return { width: rect.width, height: rect.height };
     }
 
+    // Get all draggable items
     function getDraggables() {
         return canvas.querySelectorAll('.draggable');
     }
 
-    // DRAG from available items
+    // Drag from available items
     document.querySelectorAll('#available-items img').forEach(item => {
         item.addEventListener('dragstart', function(e) {
             e.dataTransfer.setData('text/plain', JSON.stringify({
@@ -81,30 +81,26 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // DROP onto canvas
+    // Drop onto canvas
     canvas.addEventListener('dragover', e => e.preventDefault());
     canvas.addEventListener('drop', function(e) {
         e.preventDefault();
         const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-        // Avoid duplicates
         if (canvas.querySelector(`.draggable[data-id="${data.id}"]`)) return;
 
         const rect = canvas.getBoundingClientRect();
         const offsetX = e.clientX - rect.left;
         const offsetY = e.clientY - rect.top;
 
-        // Create container
         const container = document.createElement('div');
         container.classList.add('draggable');
         container.dataset.id = data.id;
-        // Shift slightly so center is near drop
         const initX = offsetX - 40;
         const initY = offsetY - 40;
         container.dataset.x = initX;
         container.dataset.y = initY;
         container.dataset.scale = 1;
 
-        // zIndex approach: set new item on top
         let maxZ = 0;
         getDraggables().forEach(div => {
             const zVal = parseInt(div.dataset.z) || 0;
@@ -117,7 +113,6 @@ document.addEventListener('DOMContentLoaded', function() {
         container.style.top = '0';
         container.style.transform = `translate(${initX}px, ${initY}px) scale(1)`;
 
-        // Inner image
         const img = document.createElement('img');
         img.src = data.src;
         img.alt = data.alt;
@@ -126,7 +121,6 @@ document.addEventListener('DOMContentLoaded', function() {
         img.style.height = 'auto';
         container.appendChild(img);
 
-        // Add resize handles
         const handleBL = document.createElement('div');
         handleBL.classList.add('resize-handle', 'bottom-left');
         const handleBR = document.createElement('div');
@@ -134,7 +128,6 @@ document.addEventListener('DOMContentLoaded', function() {
         container.appendChild(handleBL);
         container.appendChild(handleBR);
 
-        // On click, mark as selected
         container.addEventListener('click', function() {
             getDraggables().forEach(el => el.classList.remove('selected'));
             container.classList.add('selected');
@@ -142,28 +135,22 @@ document.addEventListener('DOMContentLoaded', function() {
         canvas.appendChild(container);
     });
 
-    // Interact: Draggable
+    // Draggable with custom bounds
     interact('.draggable').draggable({
-        modifiers: [
-            interact.modifiers.restrictRect({
-                restriction: 'parent',
-                endOnly: true
-            })
-        ],
         listeners: {
             move: event => {
                 const target = event.target;
                 let x = (parseFloat(target.dataset.x) || 0) + event.dx;
                 let y = (parseFloat(target.dataset.y) || 0) + event.dy;
                 const scale = parseFloat(target.dataset.scale) || 1;
+                const itemWidth = 80 * scale;
+                const itemHeight = 80 * scale;
 
-                // use actual canvas size
                 const { width: cW, height: cH } = getCanvasSize();
-                const containerWidth = 80 * scale;
-                const containerHeight = 80 * scale;
+                const margin = itemWidth * 0.1;
 
-                x = Math.min(Math.max(x, 0), cW - containerWidth);
-                y = Math.min(Math.max(y, 0), cH - containerHeight);
+                x = Math.min(Math.max(x, -margin), cW - itemWidth + margin);
+                y = Math.min(Math.max(y, -margin), cH - itemHeight + margin);
 
                 target.dataset.x = x;
                 target.dataset.y = y;
@@ -172,37 +159,56 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Interact: Resizable
+    // Draggable with custom bounds
+    interact('.draggable').draggable({
+        listeners: {
+            move: event => {
+                const target = event.target;
+                let x = (parseFloat(target.dataset.x) || 0) + event.dx;
+                let y = (parseFloat(target.dataset.y) || 0) + event.dy;
+                const scale = parseFloat(target.dataset.scale) || 1;
+                const itemWidth = 80 * scale;  // Base width scaled
+                const itemHeight = 80 * scale; // Assuming square items; adjust if needed
+
+                const { width: cW, height: cH } = getCanvasSize();
+                const margin = cW*0.1; // 10% overlap
+
+                // New bounds: allow overlap by margin
+                x = Math.min(Math.max(x, -margin), 1.1*cW + margin - itemWidth);
+                y = Math.min(Math.max(y, -margin), 1.1*cH + margin - itemHeight);
+
+                target.dataset.x = x;
+                target.dataset.y = y;
+                target.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+            }
+        }
+    });
+
+    // Resizable with custom bounds
     interact('.draggable').resizable({
         preserveAspectRatio: true,
         edges: { left: true, right: true, bottom: true, top: true },
-        modifiers: [
-            interact.modifiers.restrictEdges({
-                outer: 'parent',
-                endOnly: true
-            })
-        ],
         inertia: true,
         listeners: {
             move: event => {
                 const target = event.target;
                 let newWidth = event.rect.width;
-                // base width=80 => scale = newWidth/80
                 let newScale = newWidth / 80;
                 if (newScale < 0.1) newScale = 0.1;
-                if (newScale > 2.0) newScale = 2.0;
+                if (newScale > 6) newScale = 6;
 
                 target.dataset.scale = newScale;
 
                 let x = parseFloat(target.dataset.x) || 0;
                 let y = parseFloat(target.dataset.y) || 0;
-
-                // bounding
+                const itemWidth = 80 * newScale;
+                const itemHeight = 80 * newScale;
                 const { width: cW, height: cH } = getCanvasSize();
-                const containerWidth = 80 * newScale;
-                const containerHeight = 80 * newScale;
-                x = Math.min(Math.max(x, 0), cW - containerWidth);
-                y = Math.min(Math.max(y, 0), cH - containerHeight);
+                const margin = cW*0.1;
+
+                // New bounds: allow overlap by margin
+                x = Math.min(Math.max(x, -margin), 1.1*cW + margin - itemWidth);
+                y = Math.min(Math.max(y, -margin), 1.1*cH + margin - itemHeight);
 
                 target.dataset.x = x;
                 target.dataset.y = y;
@@ -217,10 +223,18 @@ document.addEventListener('DOMContentLoaded', function() {
         if (selected) {
             let scale = parseFloat(selected.dataset.scale) || 1;
             scale += 0.1;
-            if (scale > 2.0) scale = 2.0;
+            if (scale > 6) scale = 6;
 
             let x = parseFloat(selected.dataset.x) || 0;
             let y = parseFloat(selected.dataset.y) || 0;
+            const itemWidth = 80 * scale;
+            const itemHeight = 80 * scale;
+            const { width: cW, height: cH } = getCanvasSize();
+            const margin = itemWidth * 0.1;
+
+            // New bounds: allow overlap by margin
+            x = Math.min(Math.max(x, -margin), cW + margin - itemWidth);
+            y = Math.min(Math.max(y, -margin), cH + margin - itemHeight);
 
             selected.dataset.scale = scale;
             selected.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
@@ -237,13 +251,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
             let x = parseFloat(selected.dataset.x) || 0;
             let y = parseFloat(selected.dataset.y) || 0;
+            const itemWidth = 80 * scale;
+            const itemHeight = 80 * scale;
+            const { width: cW, height: cH } = getCanvasSize();
+            const margin = itemWidth * 0.1;
+
+            // New bounds: allow overlap by margin
+            x = Math.min(Math.max(x, -margin), cW + margin - itemWidth);
+            y = Math.min(Math.max(y, -margin), cH + margin - itemHeight);
 
             selected.dataset.scale = scale;
             selected.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
         }
     });
 
-    // Move Up => set z to highest+1
+    // Move Up (z-index)
     document.getElementById('move-up').addEventListener('click', function() {
         const selected = document.querySelector('#canvas .draggable.selected');
         if (selected) {
@@ -258,12 +280,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Move Down => set z=0
+    // Move Down (z-index)
     document.getElementById('move-down').addEventListener('click', function() {
         const selected = document.querySelector('#canvas .draggable.selected');
         if (selected) {
             selected.dataset.z = 0;
             selected.style.zIndex = 0;
+        }
+    });
+
+    // Delete Selected Item
+    document.getElementById('delete-item').addEventListener('click', function() {
+        const selected = document.querySelector('#canvas .draggable.selected');
+        if (selected) {
+            canvas.removeChild(selected);
         }
     });
 
