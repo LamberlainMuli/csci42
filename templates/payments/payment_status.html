@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Payment Status{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Payment Status</h2>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}" role="alert">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if status == 'success' %}
+        <p>You will be redirected shortly. If not, please click the button below.</p>
+        {% if order %}
+            <a href="{% url 'orders:order_detail' order.id %}" class="btn btn-primary">View Your Order</a>
+        {% else %}
+             <a href="{% url 'marketplace:home' %}" class="btn btn-secondary">Go to Homepage</a>
+        {% endif %}
+
+    {% else %} {# Failure #}
+        <p>There was an issue with your payment.</p>
+         {% if order %}
+              <p>Order Reference: {{ order.id }}</p>
+         {% elif order_ref %}
+              <p>Order Reference: {{ order_ref }}</p>
+         {% endif %}
+        <a href="{{ checkout_url|default:'/' }}" class="btn btn-warning">Try Again</a>
+        <a href="{% url 'marketplace:home' %}" class="btn btn-secondary">Go to Homepage</a>
+    {% endif %}
+</div>
+{% endblock %}

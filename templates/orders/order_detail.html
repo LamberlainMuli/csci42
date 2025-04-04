@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Order Details - {{ order.id }}{% endblock %}
+
+{% block content %}
+<h2>Order Details</h2>
+
+<div class="card mb-4">
+    <div class="card-header">
+        Order #{{ order.id }}
+    </div>
+    <div class="card-body">
+        <h5 class="card-title">Status: <span class="badge badge-{% if order.status == 'PAID' %}success{% elif order.status == 'PENDING' %}warning{% elif order.status == 'FAILED' or order.status == 'CANCELLED' %}danger{% else %}info{% endif %}">{{ order.get_status_display }}</span></h5>
+        <p class="card-text"><strong>Date Placed:</strong> {{ order.created_at|date:"F d, Y, P" }}</p>
+        <p class="card-text"><strong>Total Amount:</strong> ₱{{ order.total_amount|floatformat:2|intcomma }}</p>
+        <p class="card-text"><strong>Payment Method:</strong> {{ order.get_payment_method_display|default:"N/A" }}</p>
+        {% if order.xendit_payment_request_id %}
+         <p class="card-text"><small class="text-muted">Xendit Request ID: {{ order.xendit_payment_request_id }}</small></p>
+        {% endif %}
+         {% if order.xendit_payment_id %}
+         <p class="card-text"><small class="text-muted">Xendit Payment ID: {{ order.xendit_payment_id }}</small></p>
+        {% endif %}
+
+        {% if order.status == 'PENDING' and order.payment_method == 'XENDIT' %}
+            <div class="alert alert-warning" role="alert">
+              Your payment is pending. Please follow any instructions provided (e.g., check your email, complete payment via the provider's app/website, or see specific details below if applicable). The status will update once payment is confirmed.
+            </div>
+            {# Add specific instructions if available from VA/QR/OTC templates here via includes or direct rendering #}
+        {% elif order.status == 'FAILED' %}
+             <div class="alert alert-danger" role="alert">
+               Unfortunately, your payment failed. Please try placing the order again or contact support.
+             </div>
+        {% endif %}
+    </div>
+</div>
+
+<h4>Items in this Order</h4>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Product</th>
+            <th>Seller</th>
+            <th>Quantity</th>
+            <th>Price (at time of order)</th>
+            <th>Subtotal</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in order.items_list %}
+        <tr>
+            <td>{{ item.product.title|default:"Product Removed" }}</td>
+            <td>{{ item.seller.get_full_name|default:item.seller.email|default:"N/A" }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>₱{{ item.price|floatformat:2|intcomma }}</td>
+            <td>₱{{ item.subtotal|floatformat:2|intcomma }}</td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5">There was an issue retrieving items for this order.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<a href="#" onclick="window.history.back();" class="btn btn-secondary">Back</a>
+{# Or link to an order list page #}
+{# <a href="{% url 'orders:order_list' %}" class="btn btn-secondary">My Orders</a> #}
+
+
+{% endblock %}

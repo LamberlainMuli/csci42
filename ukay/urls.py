@@ -27,7 +27,10 @@ urlpatterns = [
     path('mix-and-match/', include('mix_and_match.urls', namespace='mix_and_match')),
     path('cart/', include('cart.urls', namespace='cart')),
     path('image-scanning/', include('image_scanning.urls', namespace='image_scanning')),
+    path('orders/', include('orders.urls', namespace='orders')), 
+    path('payments/', include('payments.urls', namespace='payments')), 
 ]
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
     'user',
     'marketplace',
     'pwa',
@@ -49,11 +50,26 @@ INSTALLED_APPS = [
     'image_scanning',
     'mix_and_match',
     "crispy_forms",
+<<<<<<< HEAD:ukay/ukay/settings.py
+    "crispy_bootstrap4",
+    "wallet",
+    "orders",
+    "payments",
+=======
     "crispy_bootstrap4"
+>>>>>>> 99c37da7dc7b12077876fbd6a8e9673bd34130b0:ukay/settings.py
 ]
-
+MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
+XENDIT_SECRET_API_KEY = os.getenv('XENDIT_SECRET_API_KEY')
+XENDIT_PUBLIC_API_KEY = os.getenv('XENDIT_PUBLIC_API_KEY')
+SITE_BASE_URL = 'http://localhost:8000' 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
 
+<<<<<<< HEAD:ukay/ukay/settings.py
+=======
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
+
+>>>>>>> 99c37da7dc7b12077876fbd6a8e9673bd34130b0:ukay/settings.py
 CRISPY_TEMPLATE_PACK = "bootstrap4"
     
 MIDDLEWARE = [

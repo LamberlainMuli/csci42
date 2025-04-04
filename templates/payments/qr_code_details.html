@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Payment Instructions - QR Code{% endblock %}
+
+{% block content %}
+<h2>Payment Instructions - QR Code</h2>
+
+<div class="alert alert-info">
+    Please scan the QR code below using your preferred payment app to complete payment for Order #{{ order.id }}.
+</div>
+
+<div class="card text-center">
+    <div class="card-header">
+        Scan to Pay
+    </div>
+    <div class="card-body">
+         <p><strong>Amount Due:</strong> ₱{{ order.total_amount|floatformat:2|intcomma }}</p>
+
+         {# Option 1: Render using a QR Code JS library (Recommended) #}
+         {# Include library like qrcode.js or similar #}
+         <div id="qrcode" style="width:200px; height:200px; margin: 1em auto;"></div>
+
+         {# Option 2: Display raw string (Less user-friendly) #}
+         {# <p>QR Code String:</p> #}
+         {# <pre style="word-wrap: break-word; white-space: pre-wrap;"><code>{{ qr_string }}</code></pre> #}
+
+         <p class="mt-3">Scan this code with your payment app (e.g., GCash, Maya, Bank App supporting QR Ph). The order status will update automatically once payment is confirmed.</p>
+    </div>
+    <div class="card-footer">
+         <a href="{% url 'orders:order_detail' order.id %}" class="btn btn-primary">View Order Status</a>
+         <a href="{% url 'marketplace:home' %}" class="btn btn-secondary">Continue Shopping</a>
+     </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+{# Include if using Option 1 (JS QR Library) #}
+{# Example using qrcode.js (download or use CDN) #}
+{# <script src="/path/to/qrcode.min.js"></script> #}
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<script type="text/javascript">
+  new QRCode(document.getElementById("qrcode"), {
+      text: "{{ qr_string }}", // Pass the QR string from Django context
+      width: 200,
+      height: 200,
+      colorDark : "#000000",
+      colorLight : "#ffffff",
+      correctLevel : QRCode.CorrectLevel.H // High correction level
+  });
+</script>
+{% endblock %}
