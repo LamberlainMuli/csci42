@@ -45,8 +45,8 @@ A sustainable fashion marketplace with virtual styling capabilities, promoting e
    ```bash
    echo "DEBUG=True" >> .env
    echo "SECRET_KEY=$(python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')" >> .env
-   echo "XENDIT_PUBLIC_API_KEY=<your_public_api_key" >> .env
-   echo "XENDIT_SECRET_API_KEY=<your_secret_api_key" >> .env
+   echo "XENDIT_PUBLIC_API_KEY=<your_public_api_key>" >> .env
+   echo "XENDIT_SECRET_API_KEY=<your_secret_api_key>" >> .env
    ```
 5. **Database Setup**
    ```bash
