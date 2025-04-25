@@ -9,3 +9,4 @@ crispy-bootstrap4
 django-crispy-forms
 xendit-python
 python-dateutil
+requests

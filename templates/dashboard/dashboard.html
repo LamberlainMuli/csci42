@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Reference ID</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Payment Channel</th>
+                <th>Created At</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for transaction in transactions %}
+                <tr>
+                    <!-- Use safe filters or defaults for missing data -->
+                    <td>{{ transaction.reference_id|default:"N/A" }}</td>
+                    <td>{{ transaction.amount|floatformat:2 }}</td>  <!-- Ensuring the amount is formatted -->
+                    <td>{{ transaction.status|default:"N/A" }}</td>
+                    <td>{{ transaction.payment_channel|default:"N/A" }}</td>
+                    <td>{{ transaction.created|date:"Y-m-d H:i"|default:"Unknown Date" }}</td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5">No transactions available.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock content %}

@@ -17,7 +17,7 @@ from wallet.models import Wallet
 from wallet.models import deduct_funds, add_funds
 # Or from wallet.services import deduct_funds, add_funds
 # Import the Xendit service function
-from payments.services import create_xendit_payment_request
+#from payments.services import create_xendit_payment_request
 
 logger = logging.getLogger(__name__)
 
