@@ -1,24 +1,56 @@
-/* Ensure content isn’t hidden behind navbars */
 .content-body {
-  padding-top: 60px; /* Space for top navbar on desktop */
-  padding-bottom: 60px; /* Space for bottom navbar on mobile */
+  
+  padding-top: 56px; 
+  padding-bottom: 70px; 
 }
 
-/* Desktop: Remove bottom padding */
 @media (min-width: 768px) {
   .content-body {
       padding-bottom: 0;
   }
 }
 
-/* Mobile: Remove top padding */
 @media (max-width: 767px) {
   .content-body {
-      padding-top: 0;
+      padding-top: 0; 
   }
+
+  
+  .navbar.fixed-bottom {
+      
+      border-top: 1px solid rgba(0,0,0,0.1);
+      
+  }
+
+  .navbar.fixed-bottom .navbar-nav .nav-item {
+      flex-grow: 1; 
+  }
+
+  .navbar.fixed-bottom .nav-link {
+      
+      
+      font-size: 0.75rem; 
+      color: #6c757d; 
+  }
+
+   .navbar.fixed-bottom .nav-link.active {
+      color: #0d6efd; 
+      font-weight: bold;
+   }
+
+  .navbar.fixed-bottom .nav-link i {
+      font-size: 1.1rem; 
+      margin-bottom: 0.1rem; 
+      display: block; 
+      margin-right: 0; 
+  }
+
+  .navbar.fixed-bottom .nav-link .nav-text-mobile {
+      display: block; 
+      line-height: 1; 
+  }
+
+  
+  
 }
 
-/* Style Font Awesome icons in navbar */
-.navbar .nav-link i {
-  margin-right: 5px;
-}
