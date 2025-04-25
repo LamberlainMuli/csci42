@@ -1,24 +1,157 @@
 /* Ensure content isn’t hidden behind navbars */
 .content-body {
-  padding-top: 60px; /* Space for top navbar on desktop */
-  padding-bottom: 60px; /* Space for bottom navbar on mobile */
+	padding-top: 60px; /* Space for top navbar on desktop */
+	padding-bottom: 60px; /* Space for bottom navbar on mobile */
 }
 
 /* Desktop: Remove bottom padding */
 @media (min-width: 768px) {
-  .content-body {
-      padding-bottom: 0;
-  }
+	.content-body {
+		padding-bottom: 0;
+	}
 }
 
 /* Mobile: Remove top padding */
 @media (max-width: 767px) {
-  .content-body {
-      padding-top: 0;
-  }
+	.content-body {
+		padding-top: 0;
+	}
 }
 
 /* Style Font Awesome icons in navbar */
 .navbar .nav-link i {
-  margin-right: 5px;
+	margin-right: 5px;
+}
+
+/* Font family */
+
+/* Title font */
+
+* {
+	font-family: 'Instrument Sans', sans-serif;
+}
+
+.decorative-text {
+	font-size: 2.5rem;
+	font-family: 'Nanum Pen Script', cursive;
+}
+
+.large-heading {
+	font-family: 'Instrument Sans', sans-serif;
+	font-optical-sizing: auto;
+	font-weight: 700;
+	font-style: normal;
+	font-variation-settings: 'wdth' 100;
+	font-size: larger;
+	text-decoration: none;
+}
+
+.medium-heading {
+	font-family: 'Instrument Sans', sans-serif;
+	font-optical-sizing: auto;
+	font-weight: 600;
+	font-style: normal;
+	font-variation-settings: 'wdth' 100;
+	font-size: large;
+}
+
+.small-heading {
+	font-family: 'Instrument Sans', sans-serif;
+	font-optical-sizing: auto;
+	font-weight: 500;
+	font-style: normal;
+	font-variation-settings: 'wdth' 100;
+	font-size: medium;
+}
+
+.body-text {
+	font-family: 'Instrument Sans', sans-serif;
+	font-optical-sizing: auto;
+	font-weight: 400;
+	font-style: normal;
+	font-variation-settings: 'wdth' 100;
+	font-size: small;
+}
+
+.caption-text {
+	font-family: 'Instrument Sans', sans-serif;
+	font-optical-sizing: auto;
+	font-weight: 400;
+	font-style: normal;
+	font-variation-settings: 'wdth' 100;
+	font-size: smaller;
+}
+
+.btn-secondary {
+	background-color: pink;
+	border: none;
+}
+
+.btn-secondary:hover,
+.btn-primary:hover {
+	background-color: hotpink;
+}
+
+.btn-outline-primary:hover {
+	border-color: hotpink;
+	color: hotpink;
+	background-color: white;
+}
+
+/* This is the button with the fill */
+.btn-primary {
+	background-color: pink;
+	border: none;
+}
+
+/* This is the button with just the outline */
+.btn-outline-primary {
+	border-color: pink;
+	color: pink;
+}
+
+.search-header {
+	margin-top: 4rem;
+	padding: 2rem;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+
+a {
+	color: darkolivegreen;
+	font-family: 'Instrument Sans', sans-serif;
+	text-decoration: none;
+}
+
+.btn-link {
+	color: darkolivegreen;
+	text-decoration: none;
+}
+
+.btn-link:hover {
+	color: black;
+}
+
+.filter-actions {
+	margin-top: 2rem;
+}
+
+.greeting {
+	font-size: 2rem;
+}
+
+.content {
+	margin-top: 4rem;
+}
+
+.container {
+	margin: auto;
+	width: 100%;
+}
+
+@media screen and (max-width: 800px) {
+	.content > .container {
+		max-width: none;
+	}
 }

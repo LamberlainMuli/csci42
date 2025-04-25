@@ -6,8 +6,8 @@
   <header class="row search-header bg-light p-3 mb-3" role="banner">
     {% if user.is_authenticated %}
     <div class="col-12 col-md-3 mb-2">
-      <p>Welcome, {{ user.username }}!</p>
-      <a href="{% url 'marketplace:product-create' %}" class="btn btn-secondary" aria-label="Create a new product">
+      <p class="large-heading greeting">Welcome, {{ user.username }}!</p>
+      <a href="{% url 'marketplace:product-create' %}" class="btn btn-secondary large-heading" aria-label="Create a new product">
         <i class="fas fa-plus" aria-hidden="true"></i> Create Product
       </a>
     </div>
@@ -35,7 +35,7 @@
     <!-- Filter Sidebar -->
     <aside class="col-12 col-md-3 mb-3" id="filter-panel">
       <form method="GET" id="filter-form">
-        <h5>Filters</h5>
+        <h5 class="large-heading">Filters</h5>
         <!-- Preserve search query if exists -->
         <input type="hidden" name="q" value="{{ current_filters.q }}">
         <!-- Category filter (checkboxes) -->
@@ -132,8 +132,10 @@
             <option value="created_at_asc" {% if current_filters.sort == 'created_at_asc' %}selected{% endif %}>Oldest First</option>
           </select>
         </div>
-        <button type="submit" class="btn btn-primary" aria-label="Apply filters">Apply Filters</button>
-        <a href="{% url 'marketplace:home' %}" class="btn btn-link" aria-label="Clear filters">Clear Filters</a>
+        <div class="filter-actions">
+          <button type="submit" class="btn btn-primary large-heading" aria-label="Apply filters">Apply Filters</button>
+          <a href="{% url 'marketplace:home' %}" class="btn btn-link" aria-label="Clear filters">Clear Filters</a>
+        </div>
       </form>
     </aside>
     <!-- Product Listing Section -->
@@ -144,7 +146,7 @@
           <div class="card h-100">
             <img src="{{ product.primary_image.image.url|default:'/static/images/placeholder.png' }}" class="card-img-top img-fluid" alt="{{ product.title }}">
             <div class="card-body d-flex flex-column">
-              <h5 class="card-title">
+              <h5 class="card-title large-heading">
                 <a href="{% url 'marketplace:product-detail' product.pk %}">{{ product.title }}</a>
               </h5>
               <p class="card-text mb-1">{{ product.formatted_price }}</p>
