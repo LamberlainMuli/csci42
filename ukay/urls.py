@@ -28,7 +28,8 @@ urlpatterns = [
     path('cart/', include('cart.urls', namespace='cart')),
     path('image-scanning/', include('image_scanning.urls', namespace='image_scanning')),
     path('orders/', include('orders.urls', namespace='orders')), 
-    path('payments/', include('payments.urls', namespace='payments')), 
+    path('payments/', include('payments.urls', namespace='payments')),
+    path('dashboard/', include('dashboard.urls')),
 ]
 
 if settings.DEBUG:
