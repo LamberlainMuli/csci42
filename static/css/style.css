@@ -145,10 +145,19 @@ a {
 .container {
 	margin: auto;
 	width: 100%;
+	margin-top: 4rem;
 }
 
-@media screen and (max-width: 800px) {
+@media screen and (max-width: 750px) {
 	.content > .container {
 		max-width: none;
 	}
+}
+
+.navbar {
+	background-color: pink !important;
+}
+
+.input-group-append {
+	margin-left: 1rem !important;
 }
