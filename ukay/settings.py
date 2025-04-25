@@ -54,8 +54,8 @@ INSTALLED_APPS = [
     "crispy_bootstrap4",
     "wallet",
     "orders",
-    #"payments",
     'dashboard',
+    "payments",
 ]
 
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
