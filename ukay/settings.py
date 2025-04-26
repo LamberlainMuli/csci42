@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 
 from pathlib import Path
 import os
+import base64
 from dotenv import load_dotenv
 load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -53,14 +54,15 @@ INSTALLED_APPS = [
     "crispy_bootstrap4",
     "wallet",
     "orders",
+    'dashboard',
     "payments",
 ]
+
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
 XENDIT_SECRET_API_KEY = os.getenv('XENDIT_SECRET_API_KEY')
 XENDIT_PUBLIC_API_KEY = os.getenv('XENDIT_PUBLIC_API_KEY')
 SITE_BASE_URL = 'http://localhost:8000' 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
-
 CRISPY_TEMPLATE_PACK = "bootstrap4"
     
 MIDDLEWARE = [
