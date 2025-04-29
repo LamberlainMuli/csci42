@@ -24,7 +24,6 @@ logger = logging.getLogger(__name__)
 # --- initialize_cart, cart_list, add_to_cart, remove_from_cart ---
 # --- saved_list, add_to_saved, remove_from_saved ---
 # --- distribute_payment ---
-# (Keep these functions as they were in your provided code)
 def initialize_cart(user):
     """
     Utility function: If the user doesn't have a cart, create it.

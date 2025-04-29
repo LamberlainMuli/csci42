@@ -30,7 +30,7 @@ DEBUG = os.getenv('DEBUG')
 
 
 ALLOWED_HOSTS = [
-    '192.168.68.123', '127.0.0.1', '192.168.254.118', '3609-180-190-229-88.ngrok-free.app'
+    '192.168.68.123', '127.0.0.1', '192.168.254.118', '3609-180-190-229-88.ngrok-free.app', 'f4b3-180-190-31-188.ngrok-free.app'
 ]
 
 
@@ -196,5 +196,6 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://3609-180-190-229-88.ngrok-free.app'
+    'https://3609-180-190-229-88.ngrok-free.app',
+    'https://f4b3-180-190-31-188.ngrok-free.app'
 ]
