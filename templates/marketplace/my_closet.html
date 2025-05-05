@@ -1,46 +1,277 @@
 {% extends 'base.html' %}
+{% load static humanize %}
+{% load marketplace_tags %} {# Load custom tags for query_transform #}
+
+{% block title %}My Closet{% endblock %}
+
 {% block content %}
-<main class="container mt-4">
-  <header>
-    <div class="d-flex justify-content-between align-items-center">
-      <h1>My Closet (Private Items)</h1>
-      <a href="{% url 'marketplace:product-create' %}?is_public=false" class="btn btn-primary" aria-label="Create a new private item">
-        <i class="fas fa-plus" aria-hidden="true"></i> Create Item
-      </a>
-    </div>
-    <hr>
-  </header>
-  <section class="row" aria-label="My Closet Items">
-    {% for product in closet_products %}
-    <article class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
-      <div class="card h-100">
-        <div class="card-body">
-          <h2 class="card-title">
-            <a href="{% url 'marketplace:product-detail' product.pk %}">{{ product.title }}</a>
-          </h2>
-          {% if product.primary_image %}
-          <img src="{{ product.primary_image.image.url }}" alt="{{ product.title }}" class="img-fluid mb-2">
-          {% else %}
-          <p>No image available</p>
-          {% endif %}
-          <p><small>Created: {{ product.created_at|date:"M d, Y" }}</small></p>
-          <p><span class="badge badge-secondary">Private</span></p>
-          <div class="mt-3">
-            <a href="{% url 'marketplace:product-update' product.pk %}" class="btn btn-warning btn-sm" aria-label="Edit {{ product.title }}">
-              <i class="fas fa-edit" aria-hidden="true"></i> Edit
+<main class="container mt-4 mb-5"> {# Ensure bottom margin #}
+
+    {# --- Header with Title, Search, Filter, Create --- #}
+    {# ... (header remains the same as previous version) ... #}
+     <header class="mb-4">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <h1>My Closet</h1>
+            <a href="{% url 'marketplace:product-create' %}?is_public=false" class="btn btn-success" aria-label="Create a new private item">
+                <i class="fas fa-plus" aria-hidden="true"></i> Add Item to Closet
             </a>
-            <a href="{% url 'marketplace:product-delete' product.pk %}" class="btn btn-danger btn-sm" aria-label="Delete {{ product.title }}">
-              <i class="fas fa-trash-alt" aria-hidden="true"></i> Delete
-            </a>
-          </div>
         </div>
-      </div>
-    </article>
-    {% empty %}
-    <div class="col-12">
-      <p>No private items found.</p>
-    </div>
-    {% endfor %}
-  </section>
+        {# Search and Filter Row #}
+        <div class="d-flex flex-column flex-md-row justify-content-end align-items-center gap-2">
+            <div class="flex-grow-1 me-md-2" style="max-width: 400px;">
+                 <form method="GET" action="{% url 'marketplace:my-closet' %}" role="search" id="closet-search-form">
+                     {# --- Pass ALL current filters (except 'q') as hidden inputs --- #}
+                     {% for key, value_list in current_filters.lists %}
+                        {% if key != 'q' and key != 'page' %} {# Exclude q and page #}
+                            {% for value in value_list %}
+                                <input type="hidden" name="{{ key }}" value="{{ value }}">
+                            {% endfor %}
+                        {% endif %}
+                     {% endfor %}
+                     {# --- End Hidden Inputs --- #}
+                     <div class="input-group position-relative">
+                         <input type="text" name="q" placeholder="Search my closet..." value="{{ filter_q }}" class="form-control form-control-sm" id="closet-search-input" aria-label="Search my closet" autocomplete="off">
+                         <button type="button" class="btn btn-sm btn-outline-secondary" id="closet-search-clear-btn" aria-label="Clear search" style="position: absolute; top: 50%; right: 50px; transform: translateY(-50%); z-index: 100; display: {% if filter_q %}block{% else %}none{% endif %}; border: none; padding: 0.2rem 0.4rem;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                         <button type="submit" class="btn btn-sm btn-outline-secondary" aria-label="Submit search" style="z-index: 101;">
+                             <i class="fas fa-search" aria-hidden="true"></i>
+                         </button>
+                     </div>
+                 </form>
+            </div>
+             <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#closetFilterModal" aria-label="Show filters">
+                 <i class="fas fa-filter" aria-hidden="true"></i> Filters & Sort
+             </button>
+        </div>
+         <hr>
+    </header>
+
+    {# --- Closet Items Grid --- #}
+    <section>
+        <div class="row search-results row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3" aria-label="My Closet Items">
+            {% for product in closet_products %} {# Use the context_object_name #}
+            <div class="col">
+                 <article class="card h-100 shadow-sm position-relative">
+                     <div class="card-img-container">
+                         <a href="{{ product.get_absolute_url }}">
+                              {# --- Use the pre-processed URL directly --- #}
+                             <img src="{{ product.primary_image_url }}" class="card-img-top" alt="{{ product.title }}">
+                         </a>
+                     </div>
+                     <div class="card-body d-flex flex-column pb-2 pt-2">
+                         {# ... (card title, details, buttons remain the same) ... #}
+                         <h5 class="card-title fs-6 mb-1">
+                             <a href="{{ product.get_absolute_url }}" class="text-decoration-none text-dark">{{ product.title|truncatechars:40 }}</a>
+                         </h5>
+                         <small class="text-muted mb-1 d-block">
+                              {% if product.category %}{{ product.get_category_display }}{% endif %}
+                              {% if product.size %} | Size: {{ product.size }}{% endif %}
+                              {% if product.color %} | Color: {{ product.color }}{% endif %}
+                         </small>
+                         <small class="text-muted mb-2 d-block">Added: {{ product.created_at|date:"M d, Y" }}</small>
+
+                         <div class="mt-auto btn-toolbar justify-content-center" role="toolbar">
+                              <div class="btn-group btn-group-sm w-100" role="group">
+                                  <a href="{% url 'marketplace:product-update' product.pk %}" class="btn btn-outline-secondary" title="Edit Item"><i class="fas fa-edit"></i></a>
+                                  <a href="{% url 'marketplace:product-delete' product.pk %}" class="btn btn-outline-danger" title="Delete Item"><i class="fas fa-trash"></i></a>
+                              </div>
+                         </div>
+                     </div>
+                 </article>
+            </div>
+            {% empty %}
+             {# ... (empty state remains the same) ... #}
+            {% endfor %}
+        </div>
+    </section>
+
+     {# --- Pagination --- #}
+     {% if is_paginated %}
+     <nav aria-label="Closet page navigation" class="mt-4">
+         <ul class="pagination justify-content-center">
+             {% if page_obj.has_previous %}
+             <li class="page-item">
+                 {# CORRECTED: Remove **current_filters. Pass only the 'page' kwarg. #}
+                 <a class="page-link" href="?{% query_transform page=page_obj.previous_page_number %}" aria-label="Previous">
+                     <span aria-hidden="true">&laquo;</span>
+                 </a>
+             </li>
+             {% else %}
+             <li class="page-item disabled"><span class="page-link" aria-hidden="true">&laquo;</span></li>
+             {% endif %}
+
+             <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span></li>
+
+             {% if page_obj.has_next %}
+             <li class="page-item">
+                  {# CORRECTED: Remove **current_filters. Pass only the 'page' kwarg. #}
+                  <a class="page-link" href="?{% query_transform page=page_obj.next_page_number %}" aria-label="Next">
+                     <span aria-hidden="true">&raquo;</span>
+                 </a>
+             </li>
+             {% else %}
+             <li class="page-item disabled"><span class="page-link" aria-hidden="true">&raquo;</span></li>
+             {% endif %}
+         </ul>
+     </nav>
+ {% endif %}
 </main>
+
+{# --- Closet Filter Modal --- #}
+{# ... (modal remains the same as previous version) ... #}
+<div class="modal fade" id="closetFilterModal" tabindex="-1" aria-labelledby="closetFilterModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable"> {# Use scrollable class #}
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="closetFilterModalLabel"><i class="fas fa-filter me-2"></i>Filter & Sort Closet</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="GET" id="closet-filter-form" action="{% url 'marketplace:my-closet' %}">
+          <div class="modal-body">
+            {# Preserve search query if exists #}
+            {% if filter_q %}
+                <input type="hidden" name="q" value="{{ filter_q }}">
+            {% endif %}
+
+            <div class="row">
+                {# Filters specific to closet items #}
+                <div class="col-md-6">
+                    {# Category filter #}
+                    {% if categories %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Category</label>
+                        {% for category_value in categories %}
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" name="category" value="{{ category_value }}" id="closet-cat-{{ category_value }}"
+                            {% if category_value in filter_category %} checked {% endif %}>
+                          <label class="form-check-label" for="closet-cat-{{ category_value }}">{{ category_value }}</label> {# Display raw value or use get_FOO_display if needed #}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {# Size filter #}
+                    <div class="mb-3">
+                      <label class="form-label fw-bold">Size</label>
+                      {% if show_size_checkboxes and sizes %}
+                         <div style="max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 5px;">
+                         {% for size_value in sizes %}
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="size" value="{{ size_value }}" id="closet-size-{{ forloop.counter }}"
+                                {% if size_value == filter_size %} checked {% endif %}> {# Adjust if multiple sizes allowed #}
+                              <label class="form-check-label" for="closet-size-{{ forloop.counter }}">{{ size_value }}</label>
+                            </div>
+                         {% endfor %}
+                         </div>
+                      {% else %}
+                        <input type="text" name="size" class="form-control form-control-sm" placeholder="Enter size..." value="{{ filter_size }}">
+                      {% endif %}
+                    </div>
+
+                </div> {# End col-md-6 #}
+
+                <div class="col-md-6">
+                     {# Color filter #}
+                     <div class="mb-3">
+                      <label class="form-label fw-bold">Color</label>
+                      {% if show_color_checkboxes and colors %}
+                         <div style="max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 5px;">
+                         {% for color_value in colors %}
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="color" value="{{ color_value }}" id="closet-color-{{ forloop.counter }}"
+                                {% if color_value == filter_color %} checked {% endif %}>
+                              <label class="form-check-label" for="closet-color-{{ forloop.counter }}">{{ color_value|capfirst }}</label>
+                            </div>
+                         {% endfor %}
+                         </div>
+                      {% else %}
+                        <input type="text" name="color" class="form-control form-control-sm" placeholder="Enter color..." value="{{ filter_color }}">
+                      {% endif %}
+                    </div>
+
+                     {# Material filter #}
+                    <div class="mb-3">
+                      <label class="form-label fw-bold">Material</label>
+                      {% if show_material_checkboxes and materials %}
+                         <div style="max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 5px;">
+                         {% for material_value in materials %}
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="material" value="{{ material_value }}" id="closet-material-{{ forloop.counter }}"
+                                {% if material_value == filter_material %} checked {% endif %}>
+                              <label class="form-check-label" for="closet-material-{{ forloop.counter }}">{{ material_value|capfirst }}</label>
+                            </div>
+                         {% endfor %}
+                         </div>
+                      {% else %}
+                        <input type="text" name="material" class="form-control form-control-sm" placeholder="Enter material..." value="{{ filter_material }}">
+                      {% endif %}
+                    </div>
+
+                    {# Sort dropdown #}
+                    <div class="mb-3">
+                      <label for="closetSortSelectModal" class="form-label fw-bold">Sort by</label>
+                      <select id="closetSortSelectModal" class="form-select form-select-sm" name="sort">
+                          <option value="" {% if not filter_sort %}selected{% endif %}>Default (Newest)</option>
+                          <option value="created_at_asc" {% if filter_sort == 'created_at_asc' %}selected{% endif %}>Oldest First</option>
+                          <option value="title_asc" {% if filter_sort == 'title_asc' %}selected{% endif %}>Title (A-Z)</option>
+                          <option value="title_desc" {% if filter_sort == 'title_desc' %}selected{% endif %}>Title (Z-A)</option>
+                          {# Add other relevant sorting options #}
+                      </select>
+                    </div>
+
+                </div> {# End col-md-6 #}
+            </div> {# End row #}
+
+          </div> {# End modal-body #}
+          <div class="modal-footer justify-content-between">
+             <a href="{% url 'marketplace:my-closet' %}{% if filter_q %}?q={{ filter_q }}{% endif %}" class="btn btn-outline-secondary btn-sm" aria-label="Clear filters">
+                 <i class="fas fa-times me-1"></i> Clear Filters
+             </a>
+            <button type="submit" class="btn btn-primary btn-sm" style="background-color: #efaca4; border-color: #efaca4;" aria-label="Apply filters">
+                Apply Filters
+            </button>
+          </div>
+      </form> {# End filter-form #}
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+{# Add JS for closet search clear button #}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.getElementById('closet-search-input');
+    const clearButton = document.getElementById('closet-search-clear-btn');
+    const searchForm = document.getElementById('closet-search-form');
+
+    function toggleClearButton() {
+        if (searchInput && clearButton) {
+            clearButton.style.display = searchInput.value.length > 0 ? 'block' : 'none';
+        }
+    }
+
+    if (searchInput && clearButton && searchForm) {
+        // Initial state
+        toggleClearButton();
+
+        // Show/hide on input
+        searchInput.addEventListener('input', toggleClearButton);
+
+        // Clear action
+        clearButton.addEventListener('click', function() {
+            searchInput.value = '';
+            toggleClearButton();
+            searchInput.focus();
+            // To clear filters as well, redirect to base URL is simplest
+            window.location.href = "{% url 'marketplace:my-closet' %}";
+            // Or, remove hidden filter inputs and submit:
+            // searchForm.querySelectorAll('input[type=hidden]').forEach(el => { if (el.name !== 'q') el.remove(); });
+            // searchForm.submit();
+        });
+    }
+});
+</script>
 {% endblock %}

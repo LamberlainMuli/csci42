@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Confirm Delete - {{ object.title }}{% endblock %}
+
+{% block content %}
+<main class="container mt-4 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">Confirm Deletion</h4>
+                </div>
+                <div class="card-body">
+                    <p class="fs-5">Are you sure you want to permanently delete the item:</p>
+                    <h3 class="text-center mb-4">"{{ object.title }}"?</h3>
+
+                    {# Optional: Display Product Image - Use context variable #}
+                    {# The 'with' tag is no longer needed here #}
+                    {% if primary_image %}
+                        <div class="text-center mb-3">
+                            <img src="{{ primary_image.image.url }}" alt="{{ object.title }}" class="img-thumbnail" style="max-height: 150px; max-width: 150px; object-fit: contain;">
+                        </div>
+                    {% endif %}
+
+                    <p class="text-danger"><i class="fas fa-exclamation-triangle me-2"></i><strong>Warning:</strong> This action cannot be undone.</p>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2 d-sm-flex justify-content-center mt-4">
+                             {# Determine cancel URL: Back to product detail if public, closet if private #}
+                             {# Consider adding logic here or in view to choose cancel URL more dynamically #}
+                             {% if object.is_public %}
+                                <a href="{{ object.get_absolute_url }}" class="btn btn-secondary">
+                                    <i class="fas fa-times me-2"></i>Cancel
+                                </a>
+                             {% else %}
+                                 <a href="{% url 'marketplace:my-closet' %}" class="btn btn-secondary">
+                                    <i class="fas fa-times me-2"></i>Cancel
+                                </a>
+                             {% endif %}
+                           <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash-alt me-2"></i>Yes, Delete Permanently
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}

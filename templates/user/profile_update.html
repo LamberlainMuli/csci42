@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %} {# Load crispy forms tags #}
+
+{% block title %}Update Profile{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1><i class="fas fa-user-edit"></i> Update Profile</h1>
+    <hr>
+    <form method="POST" enctype="multipart/form-data" class="mt-3">
+        {% csrf_token %}
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">Required Profile Info</div>
+                    <div class="card-body">
+                        {{ form.first_name|as_crispy_field }}
+                        {{ form.last_name|as_crispy_field }}
+                        {{ form.bio|as_crispy_field }}
+                        {{ form.profile_picture|as_crispy_field }}
+                        {{ form.contact_number|as_crispy_field }}
+                        {{ form.location|as_crispy_field }}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                 <div class="card">
+                    <div class="card-header">Optional Details (for AI)</div>
+                    <div class="card-body">
+                         {{ form.height_cm|as_crispy_field }}
+                         {{ form.weight_kg|as_crispy_field }}
+                         {{ form.gender|as_crispy_field }}
+                         {{ form.age|as_crispy_field }}
+                         {{ form.ethnicity_ai|as_crispy_field }}
+                         {{ form.body_type_ai|as_crispy_field }}
+                         {{ form.appearance_prompt_notes|as_crispy_field }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+            <a href="{% url 'user:profile' %}" class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

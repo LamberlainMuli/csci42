@@ -1,16 +1,36 @@
 {% extends 'base.html' %}
 {% load static %}
+
+{% block title %}Image Scanning Guide{% endblock %}
+
 {% block content %}
-<h1>Clothing Scanning Guide</h1>
-<hr>
-<p>Follow these tips for a good photo:</p>
-<ul>
-    <li>Use soft, even lighting.</li>
-    <li>Avoid bright reflections or harsh shadows.</li>
-    <li>Ensure high contrast between the clothing and background.</li>
-    <li>Position the clothing clearly in the frame.</li>
-</ul>
-<p>
-  <a href="{% url 'image_scanning:upload_image' %}">Start Scanning (File Upload)</a>
-</p>
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-camera-retro"></i> Clothing Image Guide</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Follow these tips for the best results when uploading or scanning your clothing items:</p>
+                    <ul>
+                        <li><strong>Lighting:</strong> Use bright, even, and soft lighting. Avoid direct sunlight or harsh shadows across the item. Natural daylight near a window often works well.</li>
+                        <li><strong>Background:</strong> Use a plain, solid-colored background that contrasts well with the clothing item. A white or neutral wall/sheet is ideal. Avoid cluttered backgrounds.</li>
+                        <li><strong>Layout:</strong> Lay the clothing item flat and smooth out any wrinkles. For items like shirts or dresses, consider hanging them on a plain hanger against the contrasting background.</li>
+                        <li><strong>Framing:</strong> Ensure the entire clothing item is clearly visible within the photo frame. Avoid cutting off parts of the item.</li>
+                        <li><strong>Resolution:</strong> Use a reasonably high resolution, but extremely large files may take longer to process. Most smartphone photos are sufficient.</li>
+                        <li><strong>Focus:</strong> Make sure the image is clear and in focus.</li>
+                    </ul>
+                    <hr>
+                    <p>Following these guidelines will help our background removal tool work effectively and give you a clean image for your listings or virtual closet.</p>
+                    <div class="text-center mt-4">
+                        <a href="{% url 'image_scanning:upload_image' %}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-upload"></i> Upload Your Image Now
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock content %}

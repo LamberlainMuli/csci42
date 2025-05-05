@@ -28,7 +28,11 @@ class Cart(models.Model):
 class CartItem(models.Model):
     """Individual product item in the user's cart."""
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='cart_items')
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='in_carts' 
+    )
     quantity = models.PositiveIntegerField(default=1)
     added_at = models.DateTimeField(auto_now_add=True)
 
@@ -42,7 +46,11 @@ class SavedItem(models.Model):
         on_delete=models.CASCADE,
         related_name='saved_items'
     )
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='saved_by_users' 
+    )
     saved_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

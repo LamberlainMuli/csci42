@@ -1,0 +1,54 @@
+{# templates/includes/pagination.html #}
+{% if is_paginated %}
+<nav aria-label="Page navigation">
+    <ul class="pagination justify-content-center mt-4">
+        {# Previous Page Link #}
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Previous"> {# Preserve other GET params #}
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            </li>
+        {% else %}
+            <li class="page-item disabled">
+                <span class="page-link" aria-hidden="true">&laquo;</span>
+            </li>
+        {% endif %}
+
+        {# Page Numbers - Display Logic for large number of pages #}
+        {% for i in page_obj.paginator.page_range %}
+            {% if page_obj.number == i %}
+                {# Current page #}
+                <li class="page-item active" aria-current="page"><span class="page-link">{{ i }}</span></li>
+            {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                {# Pages close to the current page #}
+                 <li class="page-item"><a class="page-link" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
+             {% elif i == 1 or i == page_obj.paginator.num_pages %}
+                 {# Always show first and last page, add ellipsis if needed #}
+                 {% ifchanged %} {# Use changed tag to manage ellipsis insertion #}
+                     {% if i > 1 and page_obj.number > 3 %} {# Ellipsis after first page #}
+                         <li class="page-item disabled"><span class="page-link">...</span></li>
+                     {% elif i < page_obj.paginator.num_pages and page_obj.number < page_obj.paginator.num_pages|add:"-2" %} {# Ellipsis before last page #}
+                          <li class="page-item disabled"><span class="page-link">...</span></li>
+                     {% endif %}
+                 {% endifchanged %}
+                 <li class="page-item"><a class="page-link" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ i }}</a></li>
+            {% endif %}
+        {% endfor %}
+
+
+        {# Next Page Link #}
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Next"> {# Preserve other GET params #}
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            </li>
+        {% else %}
+             <li class="page-item disabled">
+                <span class="page-link" aria-hidden="true">&raquo;</span>
+            </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}

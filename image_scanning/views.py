@@ -1,125 +1,173 @@
 # ukay/image_scanning/views.py
 import os
 import base64
+import io
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.conf import settings
 from django.core.files.base import ContentFile
-from .forms import UploadedImageForm, ProcessedClothingItemForm
-from .models import UploadedImage, ProcessedClothingItem
+from django.urls import reverse
+
+from .forms import UploadedImageForm
+from .models import UploadedImage # Import model containing upload_to functions
+# Remove ProcessedClothingItem if not directly used
 from marketplace.models import Product, ProductImage
 from . import utils
+import logging
+
+logger = logging.getLogger(__name__)
+
+# --- Helper to get expected paths/url (Revised) ---
+def get_processed_paths(uploaded_instance: UploadedImage):
+    """Generates expected relative path, full path, and URL for the processed image."""
+    if not all([uploaded_instance, uploaded_instance.original_image, uploaded_instance.user]):
+         return None, None, None
+
+    # Replicate logic from models.upload_to_processed
+    base_name = os.path.splitext(os.path.basename(uploaded_instance.original_image.name))[0]
+    processed_filename = f"processed_{base_name}.png" # Standardize name
+    relative_dir = f'image_scanning/processed/{uploaded_instance.user.username}' # Matches models.py function
+
+    processed_relative_path = os.path.join(relative_dir, processed_filename)
+    processed_full_path = os.path.join(settings.MEDIA_ROOT, processed_relative_path)
+    processed_url = os.path.join(settings.MEDIA_URL, processed_relative_path).replace(os.path.sep, '/')
+
+    return processed_relative_path, processed_full_path, processed_url
+
+# --- Views ---
 
 @login_required
 def scanning_guide(request):
-    """
-    Displays instructions for capturing clothing images.
-    """
     return render(request, 'image_scanning/scanning_guide.html')
 
 @login_required
 def upload_image(request):
-    """
-    Traditional file upload for an image.
-    """
     if request.method == 'POST':
         form = UploadedImageForm(request.POST, request.FILES)
         if form.is_valid():
-            uploaded = form.save(commit=False)
-            uploaded.user = request.user
-            uploaded.save()
-            # Once user has uploaded, redirect to process_image
-            return redirect('image_scanning:process_image', uploaded_id=uploaded.id)
-    else:
-        form = UploadedImageForm()
+            uploaded_file = request.FILES['original_image']
+            if uploaded_file.size > 25 * 1024 * 1024:
+                 messages.error(request, "Image file too large (max 25MB).")
+                 return render(request, 'image_scanning/upload.html', {'form': form})
+            try:
+                uploaded = form.save(commit=False); uploaded.user = request.user; uploaded.save()
+                logger.info(f"Uploaded image {uploaded.id} saved by {request.user.email}")
+                # Instead of redirecting to process_image, redirect to the preview page
+                # which will *trigger* processing via JS if needed, or show result.
+                # For now, we stick to sync: redirect to process which redirects to preview
+                return redirect('image_scanning:process_image', uploaded_id=uploaded.id)
+            except Exception as e:
+                 logger.error(f"Error saving uploaded image: {e}", exc_info=True)
+                 messages.error(request, "Could not save uploaded image.")
+        else: messages.error(request, "Invalid file or form data.")
+    else: form = UploadedImageForm()
     return render(request, 'image_scanning/upload.html', {'form': form})
 
 @login_required
 def process_image(request, uploaded_id):
     """
-    Process the uploaded image using a U2-Net based background removal (rembg).
-    Display the processed preview and allow the user to confirm or retake.
-    If the session has a product id (either attach_product_id or replace_product_id),
-    redirect to finalize product image attachment.
+    Processes the image synchronously, saves optimized version, redirects to preview.
     """
     uploaded = get_object_or_404(UploadedImage, id=uploaded_id, user=request.user)
-
-    if request.method == 'POST':
-        if 'confirm' in request.POST:
-            # Check for product id stored in session
-            attach_product_id = request.session.get('attach_product_id')
-            replace_product_id = request.session.get('replace_product_id')
-            product_id = attach_product_id or replace_product_id
-            if product_id:
-                return redirect('marketplace:finalize-product-image', product_id=product_id, uploaded_id=uploaded.id)
-            else:
-                messages.error(request, "No product found to attach this image to.")
-                return redirect('image_scanning:scanning_guide')
-        elif 'retake' in request.POST:
-            return redirect('image_scanning:upload_image')
-
     try:
-        processed_image_pil = utils.remove_background_u2net(uploaded.original_image.path)
+        logger.info(f"Processing image {uploaded_id} for {request.user.email}")
+        processed_image_pil = utils.remove_background_and_optimize(uploaded.original_image.path)
+
+        relative_path, full_path, _ = get_processed_paths(uploaded)
+        if not full_path: raise ValueError("Could not determine processed image path.")
+
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        processed_image_pil.save(full_path, format='PNG', optimize=True)
+        logger.info(f"Saved optimized processed image to: {full_path}")
+
+        # Redirect to the preview page
+        return redirect('image_scanning:process_preview', uploaded_id=uploaded.id)
+
     except Exception as e:
-        messages.error(request, f"Error processing image: {str(e)}")
-        return redirect('image_scanning:scanning_guide')
+        logger.error(f"Error processing image {uploaded_id}: {e}", exc_info=True)
+        messages.error(request, f"Error processing image: Please try uploading again.")
+        return redirect('image_scanning:upload_image')
 
-    # Save the processed image as PNG (since transparency is needed)
-    dir_path = os.path.dirname(uploaded.original_image.path)
-    base_name = os.path.splitext(os.path.basename(uploaded.original_image.path))[0]
-    processed_filename = f"processed_{base_name}.png"
-    processed_path = os.path.join(dir_path, processed_filename)
-    processed_image_pil.save(processed_path)
+@login_required
+def process_preview(request, uploaded_id):
+     """Displays processed image preview, handles confirm/retake/edit."""
+     uploaded = get_object_or_404(UploadedImage, id=uploaded_id, user=request.user)
+     relative_path, full_path, processed_url = get_processed_paths(uploaded)
 
-    # Build the URL for the processed image.
-    original_url = uploaded.original_image.url  # e.g., /media/image_scanning/raw/username/filename.jpg
-    processed_url = os.path.join(os.path.dirname(original_url), processed_filename)
+     if not processed_url or not os.path.exists(full_path):
+         # Maybe the file is still being processed? Or failed?
+         # Re-trigger processing just in case? Or assume failure?
+         logger.warning(f"Processed image file not found at preview: {full_path}. Re-processing attempt disabled for now.")
+         messages.error(request, "Processed image not ready or failed. Please try uploading again.")
+         return redirect('image_scanning:upload_image')
 
-    context = {
-        'uploaded': uploaded,
-        'processed_url': processed_url,
-    }
-    return render(request, 'image_scanning/process.html', context)
+     if request.method == 'POST':
+         if 'confirm' in request.POST:
+             product_id = request.session.get('attach_product_id') or request.session.get('replace_product_id')
+             if product_id:
+                 # Pass uploaded_id to finalize view
+                 return redirect(reverse('marketplace:finalize-product-image', kwargs={'product_id': product_id, 'uploaded_id': uploaded.id}))
+             else:
+                 messages.error(request, "No product context found.")
+                 return redirect('marketplace:home')
+         elif 'retake' in request.POST:
+             # Clean up files and record before redirecting
+             try: os.remove(full_path); logger.info(f"Deleted processed file: {full_path}")
+             except OSError: logger.warning(f"Could not delete processed file: {full_path}")
+             try: os.remove(uploaded.original_image.path); logger.info(f"Deleted original file: {uploaded.original_image.path}")
+             except OSError: logger.warning(f"Could not delete original file: {uploaded.original_image.path}")
+             uploaded.delete(); logger.info(f"Deleted UploadedImage record: {uploaded_id}")
+             messages.info(request, "Image discarded. Please upload new image.")
+             return redirect('image_scanning:upload_image')
+         elif 'edit' in request.POST:
+             return redirect('image_scanning:edit_image', uploaded_id=uploaded.id)
+
+     context = {'uploaded': uploaded, 'processed_url': processed_url}
+     return render(request, 'image_scanning/process_preview.html', context)
 
 @login_required
 def edit_image(request, uploaded_id):
-    """
-    Renders an image editor with a brush tool for manual corrections.
-    On POST, receives the base64-encoded edited image and saves it.
-    After saving, it redirects to finalize the product image attachment.
-    """
+    """Allows editing using Toast UI Image Editor."""
     uploaded = get_object_or_404(UploadedImage, id=uploaded_id, user=request.user)
-    dir_path = os.path.dirname(uploaded.original_image.path)
-    base_name = os.path.splitext(os.path.basename(uploaded.original_image.path))[0]
-    processed_filename = f"processed_{base_name}.png"  # force PNG
-    base_url = os.path.dirname(uploaded.original_image.url).rstrip('/')
-    processed_url = base_url + '/' + processed_filename
+    relative_path, full_path, processed_url = get_processed_paths(uploaded)
+
+    if not processed_url or not os.path.exists(full_path):
+        messages.error(request, "Image to edit not found.")
+        return redirect('image_scanning:upload_image')
 
     if request.method == 'POST':
-        edited_data = request.POST.get('edited_image')
+        edited_data = request.POST.get('edited_image_data') # Matches JS output
         if edited_data:
-            format, imgstr = edited_data.split(';base64,')
-            ext = format.split('/')[-1]
-            new_filename = "edited_" + base_name + f".{ext}"
-            new_path = os.path.join(dir_path, new_filename)
-            image_bytes = base64.b64decode(imgstr)
-            with open(new_path, 'wb') as f:
-                f.write(image_bytes)
-            messages.success(request, "Edited image saved successfully!")
-            # Redirect to finalize product image attachment if product id is available
-            product_id = request.session.get('attach_product_id') or request.session.get('replace_product_id')
-            if product_id:
-                return redirect('marketplace:finalize-product-image', product_id=product_id, uploaded_id=uploaded.id)
-            else:
-                messages.error(request, "No product found to attach this image to.")
-                return redirect('image_scanning:scanning_guide')
+            try:
+                # Decode base64 data
+                format, imgstr = edited_data.split(';base64,')
+                image_bytes = base64.b64decode(imgstr)
+
+                # Overwrite the *processed* file with the edited version
+                with open(full_path, 'wb') as f:
+                    f.write(image_bytes)
+                logger.info(f"Saved edited version over: {full_path}")
+                messages.success(request, "Edited image saved!")
+
+                # Redirect to finalize, passing the original uploaded_id
+                product_id = request.session.get('attach_product_id') or request.session.get('replace_product_id')
+                if product_id:
+                    return redirect(reverse('marketplace:finalize-product-image', kwargs={'product_id': product_id, 'uploaded_id': uploaded.id}))
+                else:
+                    messages.error(request, "No product context found.")
+                    return redirect('marketplace:home')
+            except Exception as e:
+                 logger.error(f"Error saving edited image for {uploaded_id}: {e}", exc_info=True)
+                 messages.error(request, "Could not save edited image.")
+                 # Fall through to render editor again with error
         else:
             messages.error(request, "No edited image data received.")
-            return redirect('image_scanning:edit_image', uploaded_id=uploaded.id)
+            # Fall through to render editor again
 
+    # For GET request or if POST failed validation/saving
     context = {
         'uploaded': uploaded,
-        'processed_url': processed_url,
+        'processed_url': processed_url, # URL for the editor to load
     }
     return render(request, 'image_scanning/edit.html', context)

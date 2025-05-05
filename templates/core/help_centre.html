@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<main class="container mt-4 mb-5">
+  <h1>Help Centre (FAQs)</h1>
+  <hr>
+  <h2>Frequently Asked Questions</h2>
+
+  <div class="accordion" id="faqAccordion">
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headingOne">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+          How do I list an item?
+        </button>
+      </h2>
+      <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#faqAccordion">
+        <div class="accordion-body">
+          To list an item, click the "+" button in the bottom navigation bar (mobile) or the "Create Product" button (desktop), fill in the details, upload photos, and save. Make sure to mark it as public if you want it in the marketplace.
+        </div>
+      </div>
+    </div>
+    <div class="accordion-item">
+      <h2 class="accordion-header" id="headingTwo">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+          How does shipping work?
+        </button>
+      </h2>
+      <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#faqAccordion">
+        <div class="accordion-body">
+          Shipping arrangements are typically made directly between the buyer and seller. Ukay currently does not handle shipping logistics. Please use the chat feature to coordinate.
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}

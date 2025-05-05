@@ -1,251 +1,254 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Edit Image{% endblock %}
+
 {% block content %}
+{# --- STYLESHEETS --- #}
+<link rel="stylesheet" href="https://uicdn.toast.com/tui-color-picker/v2.2.7/tui-color-picker.min.css" />
+<link rel="stylesheet" href="https://uicdn.toast.com/tui-image-editor/latest/tui-image-editor.min.css" />
+<style>
+    #tui-image-editor-container {
+        width: 100%; height: 75vh; min-height: 500px; max-height: 85vh;
+        max-width: 1200px; margin: 0 auto; /* Centering */
+        border: 1px solid #555; background-color: #1e1e1e;
+        position: relative; overflow: hidden; /* Hide canvas overflow */
+    }
+    #tui-image-editor-container:-webkit-full-screen { height: 100%; width: 100%; max-width: none; max-height: none; margin: 0; border: none; background-color: #1e1e1e; display: block !important; }
+    #tui-image-editor-container:-moz-full-screen { height: 100%; width: 100%; max-width: none; max-height: none; margin: 0; border: none; background-color: #1e1e1e; display: block !important; }
+    #tui-image-editor-container:-ms-fullscreen { height: 100%; width: 100%; max-width: none; max-height: none; margin: 0; border: none; background-color: #1e1e1e; display: block !important; }
+    #tui-image-editor-container:fullscreen { height: 100%; width: 100%; max-width: none; max-height: none; margin: 0; border: none; background-color: #1e1e1e; display: block !important; }
+    #tui-image-editor-container:fullscreen .tui-image-editor-wrap { height: 100% !important; }
+    .tui-image-editor-header-logo { display: none !important; }
+    .tui-image-editor-header-buttons .tui-image-editor-download-btn { display: none; }
+    .editor-top-controls { text-align: right; margin-bottom: 0.5rem; max-width: 1200px; margin-left: auto; margin-right: auto;}
+    .save-button-container { text-align: center; margin: 20px 0; }
+    .editor-page-title { color: #343a40; }
+    .editor-page-description { color: #6c757d; }
+
+    /* Mobile placeholder */
+    #mobile-editor-placeholder { display: none; text-align: center; padding: 40px 20px; border: 1px dashed #ccc; border-radius: 5px; background-color: #f8f9fa; margin: 1rem auto; max-width: 600px; }
+    @media (max-width: 767.98px) {
+        #tui-image-editor-container { display: none; }
+        #mobile-editor-placeholder { display: block; }
+        #desktop-fullscreen-btn { display: none; } /* Hide desktop button on mobile */
+    }
+    /* Ensure editor container is visible when fullscreen on mobile */
+     #tui-image-editor-container:fullscreen { display: block !important; }
+
+</style>
+{# --- END STYLESHEETS --- #}
+
 <div class="container mt-4">
-    <h1><i class="fas fa-paint-brush"></i> Advanced Image Editor</h1>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+         <h2 class="editor-page-title"><i class="fas fa-edit"></i> Edit Image</h2>
+         <a href="{% url 'image_scanning:process_preview' uploaded.id %}" class="btn btn-sm btn-outline-secondary" title="Cancel Edit">
+              <i class="fas fa-times"></i> Cancel
+         </a>
+    </div>
+    <p class="editor-page-description">Use the tools below to refine your image. Click "Save Changes" when done.</p>
     <hr>
-    <p>Use the brush tool to adjust the image manually. <strong>Remove</strong> erases parts; <strong>Add</strong> restores the original.</p>
-    <div class="btn-group mb-3" role="group">
-        <button class="btn btn-secondary" onclick="setBrushMode('remove')"><i class="fas fa-eraser"></i> Remove</button>
-        <button class="btn btn-secondary" onclick="setBrushMode('add')"><i class="fas fa-plus"></i> Add</button>
-        <button class="btn btn-secondary" onclick="increaseBrush()">+</button>
-        <button class="btn btn-secondary" onclick="decreaseBrush()">−</button>
-        <button class="btn btn-secondary" onclick="undo()"><i class="fas fa-undo"></i> Undo</button>
-        <button class="btn btn-secondary" onclick="redo()"><i class="fas fa-redo"></i> Redo</button>
-        <button class="btn btn-secondary" onclick="toggleInteractionMode()"><i class="fas fa-arrows-alt"></i> Toggle Mode</button>
+
+    {# Placeholder shown only on mobile #}
+    <div id="mobile-editor-placeholder">
+        <p><i class="fas fa-mobile-alt fa-2x mb-2"></i></p>
+        <p>Editing works best in fullscreen landscape mode on mobile.</p>
+        <button id="mobileFullscreenBtn" class="btn btn-primary mt-2">
+            <i class="fas fa-expand"></i> Launch Fullscreen Editor
+        </button>
     </div>
-    <div class="mb-3">
-        <span id="modeLabel">Brush Mode: None</span> | 
-        <span id="interactionModeLabel">Interaction Mode: edit</span> | 
-        <span id="brushSizeLabel">Brush Size: 20</span> | 
-        <span id="scaleLabel">Scale: 1.0</span>
+
+    {# Controls above editor (like fullscreen) #}
+    <div class="editor-top-controls">
+         <button id="desktop-fullscreen-btn" class="btn btn-sm btn-outline-secondary" title="Toggle Fullscreen">
+            <i class="fas fa-expand"></i> Fullscreen
+        </button>
     </div>
-    <canvas id="editCanvas" class="img-fluid" style="border:1px solid #ccc;"></canvas>
-    <button class="btn btn-success mt-3" onclick="saveEditedImage()"><i class="fas fa-save"></i> Save Edited Image</button>
-    <form id="editForm" method="POST" action="{% url 'image_scanning:edit_image' uploaded.id %}">
+
+    {# Editor Container - hidden on mobile by default via CSS #}
+    <div id="tui-image-editor-container"></div>
+
+    {# Save Button and Hidden Form #}
+    <div class="save-button-container">
+        <button id="saveBtn" class="btn btn-success btn-lg me-2">
+            <i class="fas fa-save"></i> Save Changes and Continue
+        </button>
+         <a href="{% url 'image_scanning:process_preview' uploaded.id %}" class="btn btn-secondary">Cancel Edit</a>
+    </div>
+
+    {# Hidden form #}
+    <form id="editForm" method="POST" action="{% url 'image_scanning:edit_image' uploaded.id %}" style="display: none;">
         {% csrf_token %}
-        <input type="hidden" name="edited_image" id="editedImageInput">
+        <input type="hidden" name="edited_image_data" id="editedImageDataInput">
     </form>
 </div>
 
+
+{# --- SCRIPTS --- #}
+{# Dependencies #}
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.4.0/fabric.js"></script>
+<script type="text/javascript" src="https://uicdn.toast.com/tui.code-snippet/v1.5.2/tui-code-snippet.min.js"></script>
+<script type="text/javascript" src="https://uicdn.toast.com/tui-color-picker/v2.2.7/tui-color-picker.min.js"></script>
+{# Toast UI Image Editor #}
+<script type="text/javascript" src="https://uicdn.toast.com/tui-image-editor/latest/tui-image-editor.min.js"></script>
+
+{# Initialization script #}
 <script>
-let canvas, ctx, img;
-let drawing = false;
-let brushSize = 20;
-let brushMode = null;  // "add" or "remove"
-let interactionMode = "edit"; // "edit" (brush) or "drag" (panning)
-let scale = 1.0;
-let offsetX = 0, offsetY = 0;
-let startPanX = 0, startPanY = 0;
-let panning = false;
-let undoStack = [];
-let redoStack = [];
-let lastX = null, lastY = null; // For "add" mode strokes
+    document.addEventListener('DOMContentLoaded', function() {
+        const imageEditorContainer = document.querySelector('#tui-image-editor-container');
+        const saveButton = document.getElementById('saveBtn');
+        const hiddenInput = document.getElementById('editedImageDataInput');
+        const editForm = document.getElementById('editForm');
+        const fullscreenButtonDesktop = document.getElementById('desktop-fullscreen-btn');
+        const fullscreenButtonMobile = document.getElementById('mobileFullscreenBtn');
+        const imageUrl = "{{ processed_url }}?t=" + new Date().getTime();
 
-// Initialize canvas: load base image (processed image)
-function initCanvas() {
-  canvas = document.getElementById('editCanvas');
-  ctx = canvas.getContext('2d');
-  img = new Image();
-  img.onload = function() {
-    canvas.width = img.width;
-    canvas.height = img.height;
-    redrawCanvas();
-    pushUndo();
-  };
-  img.src = "{{ processed_url }}";
-}
+        if (!imageEditorContainer || !saveButton || !hiddenInput || !editForm || !fullscreenButtonMobile || !fullscreenButtonDesktop) {
+            console.error("Editor components missing!");
+            // Avoid alert on mobile where placeholder is expected
+            if (window.innerWidth > 767) { alert("Error initializing editor: HTML elements missing."); }
+            return;
+        }
 
-// Redraw canvas with current transform (scale and offset)
-function redrawCanvas() {
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.restore();
-  
-  ctx.save();
-  ctx.translate(offsetX, offsetY);
-  ctx.scale(scale, scale);
-  ctx.drawImage(img, 0, 0);
-  ctx.restore();
-}
+        // Dark Theme
+        const darkTheme = { /* ... same dark theme object ... */
+            'common.bi.image': '', 'common.backgroundImage': 'none', 'common.backgroundColor': '#1e1e1e', 'common.border': '0px',
+            'header.backgroundImage': 'none', 'header.backgroundColor': 'transparent', 'header.border': '0px',
+            'loadButton.display': 'none', 'downloadButton.display': 'none', 'menu.backgroundColor': '#1e1e1e',
+            'submenu.backgroundColor': '#1e1e1e', 'submenu.partition.color': '#3c3c3c', 'menu.normalIcon.color': '#8a8a8a',
+            'menu.activeIcon.color': '#fff', 'menu.disabledIcon.color': '#434343', 'menu.hoverIcon.color': '#e9e9e9',
+            'submenu.normalIcon.color': '#8a8a8a', 'submenu.activeIcon.color': '#fff', 'submenu.normalLabel.color': '#8a8a8a',
+            'submenu.normalLabel.fontWeight': 'lighter', 'submenu.activeLabel.color': '#fff', 'submenu.activeLabel.fontWeight': 'lighter',
+            'checkbox.border': '1px solid #ccc', 'checkbox.backgroundColor': '#fff', 'range.pointer.color': '#fff',
+            'range.bar.color': '#666', 'range.subbar.color': '#d1d1d1', 'range.disabledPointer.color': '#414141',
+            'range.disabledBar.color': '#282828', 'range.disabledSubbar.color': '#414141', 'range.value.color': '#fff',
+            'range.value.fontWeight': 'lighter', 'range.value.fontSize': '11px', 'range.value.border': '1px solid #353535',
+            'range.value.backgroundColor': '#151515', 'range.title.color': '#fff', 'range.title.fontWeight': 'lighter',
+            'colorpicker.button.border': '1px solid #1e1e1e', 'colorpicker.title.color': '#fff',
+        };
 
-// Undo/Redo functionality using full canvas snapshots.
-function pushUndo() {
-  undoStack.push(canvas.toDataURL("image/png"));
-  if (undoStack.length > 10) { undoStack.shift(); }
-  redoStack = [];
-}
-function restoreFrom(dataURL) {
-  let tempImg = new Image();
-  tempImg.onload = function() {
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(tempImg, 0, 0);
-    ctx.restore();
-  };
-  tempImg.src = dataURL;
-}
-function undo() {
-  if (undoStack.length > 1) {
-    redoStack.push(undoStack.pop());
-    restoreFrom(undoStack[undoStack.length - 1]);
-  }
-}
-function redo() {
-  if (redoStack.length > 0) {
-    let state = redoStack.pop();
-    undoStack.push(state);
-    restoreFrom(state);
-  }
-}
+        let instance = null; // Define instance variable
+        let currentScale = 1.0; // Variable to track zoom state for our custom zoom
 
-// Set brush mode ("add" or "remove")
-function setBrushMode(mode) {
-  brushMode = mode;
-  document.getElementById('modeLabel').textContent = "Brush Mode: " + mode;
-  // Reset last coordinates for add strokes.
-  lastX = null;
-  lastY = null;
-}
+        console.log("Initializing TUI Image Editor...");
+        console.log("Image URL:", imageUrl);
 
-// Toggle between "edit" (brush) and "drag" (panning) for mobile.
-function toggleInteractionMode() {
-  interactionMode = (interactionMode === "edit") ? "drag" : "edit";
-  document.getElementById('interactionModeLabel').textContent = "Interaction Mode: " + interactionMode;
-}
+        try {
+            instance = new tui.ImageEditor(imageEditorContainer, {
+                 includeUI: {
+                     loadImage: { path: imageUrl, name: 'EditableImage' },
+                     theme: darkTheme,
+                     initMenu: 'filter', menuBarPosition: 'bottom',
+                     menu: ['crop', 'flip', 'rotate', 'draw', 'text', 'filter'],
+                     // Let the editor determine initial canvas size based on loaded image and container constraints
+                     // cssMaxWidth and cssMaxHeight might interfere with initial fitting/zooming if set too rigidly here
+                 },
+                 // Use larger selection handles for touch
+                 selectionStyle: { cornerSize: 30, rotatingPointOffset: 70 }
+            });
 
-// Increase/decrease brush size.
-function increaseBrush() {
-  brushSize += 5;
-  document.getElementById('brushSizeLabel').textContent = "Brush Size: " + brushSize;
-}
-function decreaseBrush() {
-  brushSize = Math.max(5, brushSize - 5);
-  document.getElementById('brushSizeLabel').textContent = "Brush Size: " + brushSize;
-}
+            console.log("TUI Image Editor instance created:", instance);
 
-// Zoom functions.
-function zoomIn() { setScale(scale * 1.1); }
-function zoomOut() { setScale(scale * 0.9); }
-function setScale(newScale) {
-  scale = Math.max(0.1, Math.min(5.0, newScale));
-  document.getElementById('scaleLabel').textContent = "Scale: " + scale.toFixed(2);
-  redrawCanvas();
-}
+            // --- Custom Zoom/Pan/Resize Handling ---
+            // We might need to interact with the underlying Fabric.js canvas instance
+            const canvas = instance._graphics.getCanvas(); // Access internal Fabric canvas
 
-// Handle events for drawing or panning.
-function handleStart(e) {
-  e.preventDefault();
-  let clientX = e.clientX || e.touches[0].clientX;
-  let clientY = e.clientY || e.touches[0].clientY;
-  if (interactionMode === "drag") {
-    panning = true;
-    startPanX = clientX - offsetX;
-    startPanY = clientY - offsetY;
-  } else if (interactionMode === "edit" && brushMode) {
-    pushUndo();
-    drawing = true;
-    // For "add" mode, reset lastX, lastY if starting a new stroke.
-    if (brushMode === "add") {
-      lastX = null;
-      lastY = null;
-    }
-    draw(e); 
-  }
-}
-function handleMove(e) {
-  e.preventDefault();
-  let clientX = e.clientX || (e.touches && e.touches[0].clientX);
-  let clientY = e.clientY || (e.touches && e.touches[0].clientY);
-  if (interactionMode === "drag" && panning) {
-    offsetX = clientX - startPanX;
-    offsetY = clientY - startPanY;
-    redrawCanvas();
-  } else if (interactionMode === "edit" && drawing && brushMode) {
-    draw(e);
-  }
-}
-function handleEnd(e) {
-  e.preventDefault();
-  if (interactionMode === "drag") {
-    panning = false;
-  } else if (interactionMode === "edit" && drawing) {
-    drawing = false;
-    // Clear last coordinates so the next stroke starts fresh.
-    lastX = null;
-    lastY = null;
-  }
-}
+            // Function to set zoom, centered on current view center
+            const setZoom = (newScale, centerPt = null) => {
+                const minScale = 0.05; // Lower minimum zoom out level
+                const maxScale = 5.0;
+                newScale = Math.max(minScale, Math.min(maxScale, newScale)); // Clamp
 
-// Draw on canvas depending on brush mode.
-function draw(e) {
-  const rect = canvas.getBoundingClientRect();
-  let clientX = e.clientX || (e.touches && e.touches[0].clientX);
-  let clientY = e.clientY || (e.touches && e.touches[0].clientY);
-  let x = (clientX - rect.left - offsetX) / scale;
-  let y = (clientY - rect.top - offsetY) / scale;
+                if (!centerPt) { // If no center point provided, zoom to canvas center
+                    centerPt = { x: canvas.getWidth() / 2, y: canvas.getHeight() / 2 };
+                }
+                // Use Fabric's zoomToPoint
+                canvas.zoomToPoint(centerPt, newScale);
+                currentScale = newScale; // Update our tracked scale
 
-  ctx.lineWidth = brushSize;
-  ctx.lineCap = "round";
+                // Keep canvas centered after zoom if needed (optional)
+                // Adjust viewportTransform manually? This gets complex.
+                // For now, zoomToPoint handles basic centered zoom.
 
-  if (brushMode === "remove") {
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.strokeStyle = "rgba(0,0,0,1)";
-    ctx.lineTo(x, y);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-  } else if (brushMode === "add") {
-    // In "add" mode, we want to restore the base image.
-    // We'll draw small circles from the original image along the stroke.
-    ctx.globalCompositeOperation = "source-over";
-    // If this is the first add point, simply draw a circle.
-    if (lastX === null || lastY === null) {
-      ctx.drawImage(img, x - brushSize/2, y - brushSize/2, brushSize, brushSize, x - brushSize/2, y - brushSize/2, brushSize, brushSize);
-    } else {
-      // Interpolate between last point and current point.
-      let dist = Math.hypot(x - lastX, y - lastY);
-      let steps = Math.ceil(dist / (brushSize/2));
-      for (let i = 1; i <= steps; i++) {
-        let interpX = lastX + (x - lastX) * i / steps;
-        let interpY = lastY + (y - lastY) * i / steps;
-        ctx.drawImage(img, interpX - brushSize/2, interpY - brushSize/2, brushSize, brushSize, interpX - brushSize/2, interpY - brushSize/2, brushSize, brushSize);
-      }
-    }
-    lastX = x;
-    lastY = y;
-  }
-}
+                console.log("Zoom set to:", currentScale);
+                instance.ui.resizeEditor(); // Tell TUI UI to potentially update based on new canvas state
+            };
 
-function saveEditedImage() {
-  let maxDim = 1024;
-  let w = canvas.width;
-  let h = canvas.height;
-  let scaleFactor = Math.min(1, maxDim / Math.max(w, h));
-  let tempCanvas = document.createElement("canvas");
-  tempCanvas.width = w * scaleFactor;
-  tempCanvas.height = h * scaleFactor;
-  let tctx = tempCanvas.getContext("2d");
-  tctx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
-  const dataURL = tempCanvas.toDataURL("image/png");
-  document.getElementById("editedImageInput").value = dataURL;
-  document.getElementById("editForm").submit();
-}
+            // Zoom Buttons (Example - Add these buttons to your HTML if desired)
+            // document.getElementById('zoomInBtn').addEventListener('click', () => setZoom(currentScale * 1.2));
+            // document.getElementById('zoomOutBtn').addEventListener('click', () => setZoom(currentScale / 1.2));
 
-function setupCanvasEvents() {
-  canvas.addEventListener("mousedown", handleStart);
-  canvas.addEventListener("mousemove", handleMove);
-  canvas.addEventListener("mouseup", handleEnd);
-  canvas.addEventListener("mouseleave", handleEnd);
-  canvas.addEventListener("touchstart", handleStart);
-  canvas.addEventListener("touchmove", handleMove);
-  canvas.addEventListener("touchend", handleEnd);
-}
+             // Correct resize handling for TUI UI
+            const resizeEditorUI = () => {
+                setTimeout(() => { // Delay slightly
+                     if (instance && instance.ui && typeof instance.ui.resizeEditor === 'function') {
+                        instance.ui.resizeEditor(); console.log("Editor resize called.");
+                     } else { console.warn("resizeEditor not available."); }
+                }, 150);
+            };
+            window.addEventListener('resize', resizeEditorUI);
 
-window.addEventListener("load", function() {
-  initCanvas();
-  setupCanvasEvents();
-});
+
+            // --- Fullscreen Handling ---
+            function requestEnterFullscreen() {
+                 imageEditorContainer.style.display = 'block'; // Ensure visible
+                 const el = imageEditorContainer; // Element to make fullscreen
+                 if (el.requestFullscreen) el.requestFullscreen();
+                 else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+                 else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                 else if (el.msRequestFullscreen) el.msRequestFullscreen();
+            }
+            function exitFullscreen() { /* ... exit fullscreen logic ... */
+                 if (document.exitFullscreen) document.exitFullscreen();
+                 else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+                 else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                 else if (document.msExitFullscreen) document.msExitFullscreen();
+            }
+             function toggleFullscreen() {
+                 if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement && !document.msFullscreenElement) {
+                     requestEnterFullscreen();
+                 } else { exitFullscreen(); }
+             }
+             function attemptLockLandscape() { /* ... landscape lock logic ... */
+                  try {
+                      if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                          screen.orientation.lock('landscape').catch(err => console.warn('Orientation lock failed:', err));
+                      } else { console.warn('Screen Orientation lock API not supported.'); }
+                  } catch (err) { console.warn('Error locking orientation:', err); }
+             }
+
+            // Attach listeners
+            fullscreenButtonDesktop.addEventListener('click', toggleFullscreen);
+            fullscreenButtonMobile.addEventListener('click', () => {
+                requestEnterFullscreen();
+                // Attempt lock after entering - browser might require user gesture
+                setTimeout(attemptLockLandscape, 50); // Small delay
+            });
+
+            // Resize editor on fullscreen change
+            ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach( event =>
+                document.addEventListener(event, resizeEditorUI, false)
+            );
+
+            // --- Save Button Handler ---
+            saveButton.addEventListener('click', function(event) {
+                // ... (save logic remains the same) ...
+                event.preventDefault();
+                saveButton.disabled = true; saveButton.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+                try {
+                    const base64String = instance.toDataURL({ format: 'png' });
+                    if (base64String) { hiddenInput.value = base64String; editForm.submit(); }
+                    else { throw new Error("Editor returned empty data."); }
+                } catch (error) { console.error("Save Error:", error); alert("Error saving: " + error.message); saveButton.disabled = false; saveButton.innerHTML = '<i class="fas fa-save" ></i> Save Changes'; }
+            });
+
+        } catch (error) { // Catch initialization error
+             console.error("Error initializing TUI Image Editor:", error);
+             alert("Failed to initialize image editor. See console.");
+             imageEditorContainer.innerHTML = '<p class="text-danger text-center mt-5">Could not load image editor.</p>';
+        }
+    });
 </script>
+{# --- END SCRIPTS --- #}
+
 {% endblock content %}

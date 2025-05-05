@@ -1,29 +1,98 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}My Dashboard{% endblock %}
 
 {% block content %}
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Reference ID</th>
-                <th>Amount</th>
-                <th>Status</th>
-                <th>Payment Channel</th>
-                <th>Created At</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for transaction in transactions %}
-                <tr>
-                    <!-- Use safe filters or defaults for missing data -->
-                    <td>{{ transaction.reference_id|default:"N/A" }}</td>
-                    <td>{{ transaction.amount|floatformat:2 }}</td>  <!-- Ensuring the amount is formatted -->
-                    <td>{{ transaction.status|default:"N/A" }}</td>
-                    <td>{{ transaction.payment_channel|default:"N/A" }}</td>
-                    <td>{{ transaction.created|date:"Y-m-d H:i"|default:"Unknown Date" }}</td>
-                </tr>
-            {% empty %}
-                <tr><td colspan="5">No transactions available.</td></tr>
-            {% endfor %}
-        </tbody>
-    </table>
-{% endblock content %}
+<div class="container mt-4">
+    <h2>My Dashboard</h2>
+    <hr>
+
+
+
+    {% if dashboard_error %}
+    <div class="alert alert-danger" role="alert">
+        {{ dashboard_error }}
+    </div>
+    {% endif %}
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h4>My Wallet</h4>
+            <a href="{% url 'wallet:top_up' %}" class="btn btn-success btn-sm">
+                <i class="fas fa-plus-circle"></i> Top Up Wallet
+            </a>
+        </div>
+        <div class="card-body">
+            {% if wallet %} {# Wallet object should always exist now #}
+                <p><strong>Current Balance:</strong> ₱{{ wallet.balance|floatformat:2|intcomma }}</p>
+                <h5>Recent Transactions:</h5>
+                {% if wallet_transactions %}
+                    <ul class="list-group list-group-flush">
+                        {% for tx in wallet_transactions %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
+                            {# Transaction Details #}
+                            <div class="me-3">
+                                <small class="text-muted">{{ tx.timestamp|date:"Y-m-d H:i" }}</small><br>
+                                {{ tx.get_transaction_type_display }}/{{ tx.get_status_display }} {# Show status #}
+                                {% if tx.description %}<small class="d-block text-muted fst-italic">"{{ tx.description|truncatechars:50 }}"</small>{% endif %}
+                                {% if tx.related_order_id %}
+                                     {% comment %} Attempt link - Check if it's a valid UUID structure {% endcomment %}
+                                     {% if "-" in tx.related_order_id and tx.related_order_id|length > 30 %}
+                                        <small class="d-block text-muted" style="font-size: 0.8em;">Order: <a href="{% url 'orders:order_detail' tx.related_order_id %}">{{ tx.related_order_id|stringformat:".8s" }}...</a></small>
+                                     {% else %}
+                                        <small class="d-block text-muted" style="font-size: 0.8em;">Ref: {{ tx.related_order_id|stringformat:".8s" }}...</small>
+                                     {% endif %}
+                                {% elif tx.external_reference %}
+                                     <small class="d-block text-muted" style="font-size: 0.8em;">Ext. Ref: {{ tx.external_reference|stringformat:".15s" }}...</small>
+                                {% endif %}
+                            </div>
+                            {# Amount #}
+                            <span class="fw-bold {% if tx.transaction_type == 'DEPOSIT' or tx.transaction_type == 'SALE' or tx.transaction_type == 'REFUND' %}text-success{% else %}text-danger{% endif %} ms-auto">
+                                {% if tx.transaction_type == 'DEPOSIT' or tx.transaction_type == 'SALE' or tx.transaction_type == 'REFUND' %}+{% elif tx.transaction_type == 'PURCHASE' or tx.transaction_type == 'WITHDRAWAL' %}-{% endif %}
+                                {{ tx.amount|floatformat:2|intcomma }}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {# *** UPDATED LINK *** #}
+                     <a href="{% url 'dashboard:all_transactions' %}" class="btn btn-sm btn-outline-secondary mt-2">View All Transactions</a>
+                {% else %}
+                    <p>No wallet transactions found.</p>
+                {% endif %}
+            {% elif wallet_error %}
+                 <p class="text-danger">{{ wallet_error }}</p>
+            {% else %}
+                 <p class="text-danger">Wallet data could not be loaded.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mb-4">
+         <div class="card-header d-flex justify-content-between align-items-center">
+            <h4>My Recent Orders (Bought)</h4>
+            {# *** UPDATED LINK *** #}
+            <a href="{% url 'dashboard:all_my_orders' %}" class="btn btn-sm btn-outline-secondary">View All</a>
+         </div>
+         <div class="card-body">
+            {% if my_orders %}
+            <div class="table-responsive"> <table class="table table-sm table-striped table-hover mb-0"><thead><tr><th>ID</th><th>Date</th><th>Status</th><th>Items</th><th>Total</th><th>Payment</th></tr></thead><tbody>{% for order in my_orders %} <tr><td><a href="{% url 'orders:order_detail' order.id %}">{{ order.id|stringformat:".8s" }}...</a></td><td>{{ order.created_at|date:"Y-m-d H:i" }}</td><td><span class="badge bg-{% if order.status == 'PAID' or order.status == 'DELIVERED' or order.status == 'SHIPPED' %}success{% elif order.status == 'PENDING' %}warning text-dark{% elif order.status == 'FAILED' or order.status == 'CANCELLED' %}danger{% else %}secondary{% endif %}">{{ order.get_status_display }}</span></td><td>{{ order.items.count }}</td><td class="text-end">₱{{ order.total_amount|floatformat:2|intcomma }}</td><td><small>{{ order.get_payment_method_display|default:"N/A" }}{% if order.payment_channel %} ({{ order.payment_channel }}){% endif %}</small></td></tr> {% endfor %}</tbody></table></div>
+            {% else %}<p>You haven't placed any orders yet.</p>{% endif %}
+        </div>
+    </div>
+
+     <div class="card mb-4">
+          <div class="card-header d-flex justify-content-between align-items-center">
+              <h4>My Recent Sales</h4>
+              {# *** UPDATED LINK *** #}
+              <a href="{% url 'dashboard:all_sales' %}" class="btn btn-sm btn-outline-secondary">View All</a>
+          </div>
+          <div class="card-body">
+            {% if sold_items %}
+            <div class="table-responsive"><table class="table table-sm table-striped table-hover mb-0"><thead><tr><th>Order Date</th><th>Product</th><th>Qty</th><th>Subtotal</th><th>Buyer</th><th>Order ID</th></tr></thead><tbody>{% for item in sold_items %}<tr><td>{{ item.order.created_at|date:"Y-m-d H:i" }}</td><td>{{ item.product.title|default:"(Deleted Product)"|truncatechars:30 }}</td><td>{{ item.quantity }}</td><td class="text-end">₱{{ item.subtotal|floatformat:2|intcomma }}</td><td>{{ item.order.buyer.email|default:"N/A"|truncatechars:20 }}</td><td><a href="{% url 'orders:order_detail' item.order.id %}">{{ item.order.id|stringformat:".8s" }}...</a></td></tr>{% endfor %}</tbody></table></div>
+            {% else %}<p>You haven't sold any items yet.</p>{% endif %}
+          </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,187 @@
+{# templates/mix_and_match/public_outfit_preview.html #}
+{% extends 'base.html' %}
+{% load static %}
+{% load user_tags %} {# Load the custom user tags we will create #}
+
+{% block title %}Outfit by {{ outfit_owner.username }}{% endblock %}
+
+{% block content %}
+<style>
+    /* Include the same styles as preview_outfit.html for canvas and items */
+    #canvas-preview {
+        position: relative;
+        max-width: 500px;
+        width: 100%;
+        height: auto;
+        aspect-ratio: 1 / 1;
+        border: 1px solid #e0e0e0; /* Lighter border */
+        background: #ffffff; /* Clean white background */
+        overflow: hidden;
+        margin-left: auto;
+        margin-right: auto;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1); /* Subtle shadow */
+        border-radius: 5px;
+    }
+    .preview-item {
+        position: absolute;
+        height: auto;
+        border: 1px solid transparent;
+        user-select: none;
+        -webkit-user-select: none;
+        pointer-events: none;
+         /* Smooth transition for initial fade-in */
+        opacity: 0;
+        transition: opacity 0.4s ease-in-out;
+    }
+    .preview-item.unavailable {
+        opacity: 0.6 !important; /* Ensure opacity override if needed */
+        filter: grayscale(90%);
+    }
+    .preview-item.unavailable::after {
+        content: "Sold/Private"; /* Updated text */
+        position: absolute;
+        bottom: 3px;
+        left: 3px;
+        font-size: 0.65rem;
+        font-weight: bold;
+        color: white;
+        background-color: rgba(108, 117, 125, 0.8); /* Bootstrap secondary color */
+        padding: 2px 4px;
+        border-radius: 3px;
+        pointer-events: none;
+    }
+</style>
+
+<main class="container mt-4 mb-5">
+    <div class="text-center mb-3">
+        <a href="{% url 'user:public_profile' outfit_owner.username %}" class="text-decoration-none text-dark">
+             {# Use the new template tag for the profile picture #}
+            <img src="{% outfit_owner.get_picture_url %}" alt="{{ outfit_owner.username }}'s profile picture" class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
+            <strong>Outfit by {{ outfit_owner.username }}</strong>
+        </a>
+        <p class="text-muted small mb-0">Created: {{ outfit.created_at|date:"M d, Y" }}</p>
+        {# Only show privacy status if the viewer is the owner #}
+        {% if request.user == outfit_owner %}
+             <span class="badge {% if outfit.is_public %}bg-success{% else %}bg-secondary{% endif %} ms-2">
+                {% if outfit.is_public %}Public{% else %}Private{% endif %}
+            </span>
+        {% endif %}
+    </div>
+
+    {# Warning if items are unavailable/private #}
+    {% if contains_unavailable_item %}
+        <div class="alert alert-secondary d-flex align-items-center small p-2" role="alert">
+           <i class="fas fa-info-circle me-2"></i>
+           <div>
+               Some items in this outfit might be private or no longer available for purchase.
+           </div>
+        </div>
+    {% endif %}
+
+    {# Responsive Canvas Area #}
+    <section id="canvas-preview">
+        {# Items will be positioned by JavaScript #}
+        {% for item_data in outfit_items_data %}
+            <img src="{{ item_data.primary_image_url }}"
+                 alt="{{ item_data.title }}"
+                 class="preview-item {% if item_data.is_unavailable %}unavailable{% endif %}"
+                 {# Store original data for JS scaling #}
+                 data-saved-x="{{ item_data.saved_x }}"
+                 data-saved-y="{{ item_data.saved_y }}"
+                 data-saved-scale="{{ item_data.saved_scale }}"
+                 data-z-index="{{ item_data.z_index }}"
+                 {# Initial style - JS will override #}
+                 style="left: 0px; top: 0px; width: 50px; z-index: {{ item_data.z_index }}; opacity: 0;">
+        {% endfor %}
+    </section>
+
+    {# List of Included Items #}
+    <section class="mt-4">
+        <h5>Items Included:</h5>
+        {% if outfit_items_data %}
+            <ul class="list-group list-group-flush">
+                {% for item_data in outfit_items_data %}
+                <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap">
+                    <div class="d-flex align-items-center">
+                        <img src="{{ item_data.primary_image_url }}" alt="{{ item_data.title }}" style="width: 35px; height: 35px; object-fit: contain; margin-right: 10px; background-color: #f8f9fa; border-radius: 3px;">
+                        <span>{{ item_data.title }} <small class="text-muted">({{ item_data.category }})</small></span>
+                    </div>
+                     {# Link only if product is public #}
+                    {% if item_data.product_url %}
+                        <a href="{{ item_data.product_url }}" class="btn btn-sm btn-outline-primary mt-1 mt-md-0 {% if item_data.is_unavailable %}disabled{% endif %}">
+                            <i class="fas fa-store"></i> View Item {% if item_data.is_unavailable %}(Sold/Unavailable){% endif %}
+                        </a>
+                    {% else %}
+                        <span class="badge bg-secondary mt-1 mt-md-0">Private Item</span>
+                    {% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p class="text-muted">No items found in this outfit.</p>
+        {% endif %}
+    </section>
+
+    {# Action Buttons - Only show for owner #}
+    {% if request.user == outfit_owner %}
+    <aside class="mt-4 d-flex flex-wrap gap-2 justify-content-center border-top pt-3">
+         <a href="{% url 'mix_and_match:preview_outfit' outfit.id %}" class="btn btn-primary"><i class="fas fa-edit me-1"></i>Edit/Manage Outfit</a>
+         {# Add other owner actions if needed #}
+    </aside>
+    {% endif %}
+
+</main>
+{% endblock %}
+
+{% block extra_js %}
+{# Use the same scaling/positioning script as preview_outfit.html #}
+<script type="text/javascript">
+document.addEventListener('DOMContentLoaded', function() {
+    const canvasPreview = document.getElementById('canvas-preview');
+    const previewItems = document.querySelectorAll('.preview-item');
+    // Get constants from context, provide defaults
+    const targetCanvasWidth = parseFloat('{{ TARGET_CANVAS_WIDTH|default:500.0 }}');
+    const baseItemWidth = parseFloat('{{ BASE_ITEM_WIDTH_ON_SAVE|default:80.0 }}');
+
+    function updateItemPositions() {
+        if (!canvasPreview || previewItems.length === 0) return;
+
+        const currentCanvasRect = canvasPreview.getBoundingClientRect();
+        const currentCanvasWidth = currentCanvasRect.width;
+
+        if (currentCanvasWidth <= 0 || targetCanvasWidth <= 0) {
+            console.warn("Canvas width calculation issue, skipping repositioning.");
+            return;
+        }
+
+        const scaleFactor = currentCanvasWidth / targetCanvasWidth;
+
+        previewItems.forEach(item => {
+            const savedX = parseFloat(item.dataset.savedX) || 0;
+            const savedY = parseFloat(item.dataset.savedY) || 0;
+            const savedScale = parseFloat(item.dataset.savedScale) || 1;
+
+            const displayX = savedX * scaleFactor;
+            const displayY = savedY * scaleFactor;
+            const displayWidth = baseItemWidth * savedScale * scaleFactor;
+
+            item.style.left = `${displayX.toFixed(2)}px`;
+            item.style.top = `${displayY.toFixed(2)}px`;
+            item.style.width = `${displayWidth.toFixed(2)}px`;
+            item.style.height = 'auto';
+            item.style.zIndex = item.dataset.zIndex || 0;
+            item.style.opacity = 1; // Make visible
+        });
+    }
+
+    // Use requestAnimationFrame for smoother initial load
+    requestAnimationFrame(updateItemPositions);
+
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(updateItemPositions, 150);
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% load static %} {# Load static if needed for default images #}
+
+{% block title %}Image Preview{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Image Processing Complete - Preview</h2>
+    <hr>
+
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <div class="card">
+                 <div class="card-header">Original Image</div>
+                 <div class="card-body text-center">
+                      <img src="{{ uploaded.original_image.url }}" alt="Original Image" class="img-fluid" style="max-height: 400px;">
+                 </div>
+            </div>
+        </div>
+         <div class="col-md-6 mb-3">
+             <div class="card">
+                 <div class="card-header">Processed Image (Background Removed)</div>
+                 <div class="card-body text-center" style="background-color: #e9ecef;"> {# Light background to see transparency #}
+                      {% if processed_url %}
+                      <img src="{{ processed_url }}?v={% now 'U' %}" alt="Processed Image" class="img-fluid" style="max-height: 400px;"> {# Add cache buster #}
+                      {% else %}
+                      <p class="text-danger">Could not load processed image preview.</p>
+                      {% endif %}
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    <hr>
+
+    <form method="POST" action="{% url 'image_scanning:process_preview' uploaded.id %}" class="mt-3">
+        {% csrf_token %}
+        <p>Do you want to use this processed image?</p>
+        <button type="submit" name="confirm" class="btn btn-success me-2">
+            <i class="fas fa-check"></i> Yes, Confirm and Use Image
+        </button>
+         <button type="submit" name="edit" class="btn btn-warning me-2">
+            <i class="fas fa-edit"></i> No, Edit Manually
+        </button>
+        <button type="submit" name="retake" class="btn btn-danger">
+            <i class="fas fa-undo"></i> No, Retake/Upload New Image
+        </button>
+    </form>
+
+</div>
+{% endblock content %}

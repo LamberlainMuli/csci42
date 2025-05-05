@@ -25,14 +25,33 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY')
 
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+
+if not GEMINI_API_KEY:
+    print("WARNING: GEMINI_API_KEY environment variable not set!")
+    
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG')
 
 
 ALLOWED_HOSTS = [
-    '192.168.68.123', '127.0.0.1', '192.168.254.118', '3609-180-190-229-88.ngrok-free.app', 'f4b3-180-190-31-188.ngrok-free.app'
+    'localhost',
+    'ukay.bylam.dev',
+    '159.65.4.152',
 ]
 
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.0/howto/static-files/
+
+STATIC_URL = 'static/'
+
+STATIC_ROOT = '/home/ukayapp/static_collected'
+
+STATICFILES_DIRS = [
+    BASE_DIR/'static'
+]
 
 # Application definition
 
@@ -56,6 +75,10 @@ INSTALLED_APPS = [
     "orders",
     'dashboard',
     "payments",
+    "core",
+    "django_dbml",
+    "django_extensions",
+    "chat",
 ]
 
 MESSAGE_STORAGE = 'django.contrib.messages.storage.session.SessionStorage'
@@ -88,6 +111,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'chat.context_processors.unread_chat_count',
             ],
         },
     },
@@ -101,8 +125,12 @@ WSGI_APPLICATION = 'ukay.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'ukay',
+        'USER': 'ukayuser',
+        'PASSWORD': 'ukay@2025',
+        'HOST': 'localhost',
+        'PORT': '',
     }
 }
 
@@ -138,19 +166,7 @@ USE_I18N = True
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
-
-# if not DEBUG:
-#     STATIC_ROOT = os.path.join(BASE_DIR, 'static')
-# else:
-#     STATIC_ROOT = BASE_DIR
-
-STATICFILES_DIRS = [
-    BASE_DIR/'static'
-]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
@@ -170,19 +186,19 @@ PWA_APP_START_URL = '/'
 PWA_APP_STATUS_BAR_COLOR = 'default'
 PWA_APP_ICONS = [
     {
-        'src': 'static/images/icon-192x192.png',
-        'sizes': '192x192'
+        'src': '/static/images/logo-500x500.png',
+        'sizes': '500x500'
     }
 ]
 PWA_APP_ICONS_APPLE = [
     {
-        'src': 'static/images/icon-192x192.png',
-        'sizes': '192x192'
+        'src': '/static/images/logo-500x500.png',
+        'sizes': '500x500'
     }
 ]
 PWA_APP_SPLASH_SCREEN = [
     {
-        'src': 'static/images/icon.png',
+        'src': '/static/images/icon.png',
         'media': '(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)'
     }
 ]
@@ -196,6 +212,70 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://3609-180-190-229-88.ngrok-free.app',
-    'https://f4b3-180-190-31-188.ngrok-free.app'
+    'https://ukay.bylam.dev',
+    'https://159.65.4.152'
 ]
+
+# Keep this for defining the 'From' address easily
+DEFAULT_FROM_EMAIL = f"{os.environ.get('BREVO_SENDER_NAME')} <{os.environ.get('BREVO_SENDER_EMAIL')}>"
+SERVER_EMAIL = DEFAULT_FROM_EMAIL # For system error emails (might still use SMTP if configured differently, or fail if default backend isn't set)
+
+# Keep these for API access
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY')
+BREVO_SENDER_EMAIL = os.environ.get('BREVO_SENDER_EMAIL')
+BREVO_SENDER_NAME = os.environ.get('BREVO_SENDER_NAME')
+
+# Ensure required Brevo env vars are set for the API approach
+if not all([BREVO_API_KEY, BREVO_SENDER_EMAIL, BREVO_SENDER_NAME]):
+    print("CRITICAL WARNING: Brevo API environment variables not fully configured!")
+    
+
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "level": "DEBUG",
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+        "file": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(BASE_DIR, "logs", "ukay.log"),
+            "formatter": "verbose",
+        },
+        "mail_admins": {
+            "level": "ERROR",
+            "class": "django.utils.log.AdminEmailHandler",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["mail_admins", "file"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "mix_and_match": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+    },
+}

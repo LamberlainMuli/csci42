@@ -39,3 +39,4 @@ class OutfitRecommendationAdmin(admin.ModelAdmin):
         # Show a truncated version of criteria
         return (obj.criteria[:75] + '...') if len(obj.criteria) > 75 else obj.criteria
     criteria_summary.short_description = 'Criteria'
+

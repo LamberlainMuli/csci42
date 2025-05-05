@@ -1,56 +1,369 @@
-.content-body {
-  
-  padding-top: 56px; 
-  padding-bottom: 70px; 
+/* static/css/style.css */
+
+/* --- Base Layout & Full Height --- */
+html {
+    height: 100%;
+    background-color: #212529; /* Dark background visible below footer */
 }
 
-@media (min-width: 768px) {
-  .content-body {
-      padding-bottom: 0;
-  }
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh; /* Ensure body takes at least full viewport height */
+    background-color: #f8f9fa; /* Default light background for content area */
 }
 
-@media (max-width: 767px) {
-  .content-body {
-      padding-top: 0; 
-  }
-
-  
-  .navbar.fixed-bottom {
-      
-      border-top: 1px solid rgba(0,0,0,0.1);
-      
-  }
-
-  .navbar.fixed-bottom .navbar-nav .nav-item {
-      flex-grow: 1; 
-  }
-
-  .navbar.fixed-bottom .nav-link {
-      
-      
-      font-size: 0.75rem; 
-      color: #6c757d; 
-  }
-
-   .navbar.fixed-bottom .nav-link.active {
-      color: #0d6efd; 
-      font-weight: bold;
-   }
-
-  .navbar.fixed-bottom .nav-link i {
-      font-size: 1.1rem; 
-      margin-bottom: 0.1rem; 
-      display: block; 
-      margin-right: 0; 
-  }
-
-  .navbar.fixed-bottom .nav-link .nav-text-mobile {
-      display: block; 
-      line-height: 1; 
-  }
-
-  
-  
+/* Main content container: Takes up available space */
+.content-container {
+    flex: 1 0 auto; /* Allow growing and shrinking, main axis basis auto */
+    /* Padding adjustments based on fixed elements */
+    padding-top: 70px; /* Space for fixed TOP navbar (Desktop) - Adjust if height changes */
+    padding-bottom: 80px; /* Space for fixed BOTTOM navbar (Mobile) - Adjust if height changes */
 }
 
+/* Footer: Prevents shrinking */
+.footer {
+    flex-shrink: 0;
+}
+
+/* --- Media Queries for Padding --- */
+/* On mobile (md breakpoint and down), top padding is not needed as top bar is hidden */
+@media (max-width: 991.98px) { /* Bootstrap's lg breakpoint is 992px */
+    .content-container {
+        padding-top: 15px; /* Minimal top padding on mobile */
+    }
+}
+
+/* On desktop (lg breakpoint and up), bottom padding is not needed as bottom bar is hidden */
+@media (min-width: 992px) {
+    .content-container {
+         /* Keep top padding for desktop nav */
+        padding-bottom: 30px; /* Space above the desktop footer */
+    }
+    .footer {
+        display: block !important; /* Ensure footer shows on desktop */
+    }
+}
+
+
+/* Style for the standard nav items (Explore, Mix, Closet, Saved, Cart, Me) */
+.mobile-nav-item {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    /* Adjust basis/max-width for 7 items around center */
+    flex-basis: 13%; /* Approx 100 / 7 */
+    max-width: 13%; /* Prevent overlap */
+    height: 100%;
+}
+
+/* Link styling - focus on icon */
+.mobile-nav-item .nav-link {
+    color: #6c757d;
+    transition: color 0.2s ease-in-out;
+    padding: 6px 1px !important; /* Minimal horizontal padding */
+    text-align: center;
+    display: flex;
+    flex-direction: column; /* Keep column layout */
+    align-items: center;
+    justify-content: center; /* Center icon vertically */
+    width: 100%;
+    height: 100%;
+    position: relative;
+    z-index: 1;
+}
+
+/* Icon styling */
+.mobile-nav-item .nav-link i {
+    margin-bottom: 0; /* Remove margin below icon */
+    font-size: 1.2rem; /* Slightly larger icon since text is gone */
+}
+
+/* Hide text labels for 7-item layout */
+.nav-text-mobile {
+    display: none; /* Hide the text labels */
+}
+
+/* Active state - now applies only to icon color */
+.mobile-nav-item .nav-link.active {
+    color: #efaca4; /* Active color */
+    /* Remove background if it was added */
+    /* background-color: transparent; */
+}
+.mobile-nav-item .nav-link.active i {
+    color: #efaca4; /* Ensure icon inherits active color */
+}
+
+
+/* Central button container - unchanged */
+.add-button-container {
+    flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+    flex-basis: 60px !important; /* Fixed width */
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 11;
+}
+
+/* Add button itself - unchanged */
+.add-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 56px;
+    height: 56px;
+    background-color: #efaca4;
+    color: white;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    transform: translateY(-28px);
+    transition: background-color 0.2s ease;
+    text-decoration: none;
+    z-index: 10;
+}
+.add-button:hover {
+    background-color: #e8978b; /* Slightly darker on hover */
+    color: white;
+}
+
+/* Smaller text below icons */
+.nav-text-mobile {
+    font-size: 0.65rem;
+    line-height: 1;
+    margin-top: 2px;
+    padding-top:10px;
+    display: block;
+}
+
+
+/* Style for the desktop navbar specifically */
+.navbar-expand-lg[style*="#2c2c47"] { /* Target based on inline style or add a specific class */
+    border-bottom-color: #444 !important; /* Darker border */
+}
+
+.navbar-expand-lg[style*="#2c2c47"] .navbar-nav .nav-link {
+    color: rgba(255, 255, 255, 0.8); /* Lighter text color */
+}
+
+/* Hover/focus state for links */
+.navbar-expand-lg[style*="#2c2c47"] .navbar-nav .nav-link:hover,
+.navbar-expand-lg[style*="#2c2c47"] .navbar-nav .nav-link:focus {
+    color: rgba(255, 255, 255, 1); /* Full white on hover/focus */
+}
+
+/* Active link state */
+.navbar-expand-lg[style*="#2c2c47"] .navbar-nav .nav-link.active {
+    color: #ffffff; /* White for active link */
+    font-weight: bold;
+}
+
+/* Dropdown toggle text */
+.navbar-expand-lg[style*="#2c2c47"] .dropdown-toggle {
+        color: rgba(255, 255, 255, 0.8);
+}
+    .navbar-expand-lg[style*="#2c2c47"] .dropdown-toggle:hover,
+    .navbar-expand-lg[style*="#2c2c47"] .dropdown-toggle:focus {
+        color: rgba(255, 255, 255, 1);
+}
+
+/* Navbar brand (if it contains text, though yours is an image) */
+.navbar-expand-lg[style*="#2c2c47"] .navbar-brand {
+    color: #ffffff;
+}
+
+/* Adjust search button for dark background */
+/* This requires changing the class in base.html */
+
+/* Toggler icon (if needed, for smaller screens before collapse) */
+.navbar-expand-lg[style*="#2c2c47"] .navbar-toggler {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+.navbar-expand-lg[style*="#2c2c47"] .navbar-toggler-icon {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.8%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+    /* Adjust dropdown menu for better visibility if needed */
+.navbar-expand-lg[style*="#2c2c47"] .dropdown-menu {
+    /* Default Bootstrap dropdowns should be okay, but you can customize */
+    background-color: #343a40; 
+    border: 1px solid #444; 
+}
+    .navbar-expand-lg[style*="#2c2c47"] .dropdown-item {
+    color: rgba(255, 255, 255, 0.8);
+}
+.navbar-expand-lg[style*="#2c2c47"] .dropdown-item:hover,
+.navbar-expand-lg[style*="#2c2c47"] .dropdown-item:focus {
+    color: #ffffff;
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+
+/* --- Modal Fixes --- */
+
+@media (max-width: 767.98px) { /* Target mobile devices */
+
+    /* Ensure the modal dialog itself doesn't have excessive bottom margin */
+    .modal.fade .modal-dialog.modal-dialog-scrollable {
+         margin-top: 15px;
+         margin-bottom: 15px; /* Reduce or remove if padding body is enough */
+         /* max-height calculation might still be useful as a fallback */
+         max-height: calc(100vh - 30px); /* Allow it to be almost full height */
+    }
+
+    /* THIS IS THE KEY FIX: Add padding to the BOTTOM of the scrollable body */
+    .modal.fade .modal-dialog.modal-dialog-scrollable .modal-body {
+        /* Add padding equal to or greater than the modal footer height + bottom nav height */
+        padding-bottom: 120px; /* Adjust this value as needed (e.g., 50px footer + 65px nav + 5px buffer) */
+        padding-left: 0.8rem; /* Keep horizontal padding */
+        padding-right: 0.8rem;
+        padding-top: 1rem;
+    }
+
+    /* Ensure body scrolls within the modal dialog constraints */
+    .modal.fade.show {
+      overflow: hidden; /* Prevent body scroll */
+    }
+     .modal.fade .modal-dialog.modal-dialog-scrollable {
+       overflow: hidden; /* Prevent dialog scroll */
+     }
+    .modal.fade .modal-dialog.modal-dialog-scrollable .modal-content {
+       max-height: calc(100vh - 30px); /* Limit content height */
+       overflow: hidden; /* Prevent content scroll */
+    }
+     .modal.fade .modal-dialog.modal-dialog-scrollable .modal-body {
+        overflow-y: auto; /* Enable scrolling ONLY on the body */
+     }
+
+
+}
+
+/* Z-index defaults are usually fine, but can be explicit */
+.modal-backdrop {
+    z-index: 1040;
+}
+.modal {
+    z-index: 1050;
+}
+
+
+/* --- General Adjustments --- */
+
+/* Container for the card image to enforce aspect ratio */
+/* Make sure this rule is PRESENT and not overridden */
+.card-img-container {
+    position: relative;
+    width: 100%;
+    padding-top: 100%; /* 1:1 Aspect Ratio (Square) */
+    overflow: hidden;
+    background-color: #eee;
+}
+
+/* Style the image itself within the container */
+/* Make sure this rule is PRESENT and not overridden */
+.card-img-container .card-img-top {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* CRITICAL: Ensures image covers the container */
+}
+
+
+@media (min-width: 768px) { /* Matches d-none d-md-block */
+
+    /* Use the .navbar-dark-custom class */
+    .navbar-expand-lg.navbar-dark-custom {
+        border-bottom-color: #444 !important; /* Darker border */
+    }
+
+    .navbar-expand-lg.navbar-dark-custom .navbar-nav .nav-link {
+        color: rgba(255, 255, 255, 0.8); /* Lighter text color */
+    }
+
+    /* Hover/focus state for links */
+    .navbar-expand-lg.navbar-dark-custom .navbar-nav .nav-link:hover,
+    .navbar-expand-lg.navbar-dark-custom .navbar-nav .nav-link:focus {
+        color: rgba(255, 255, 255, 1); /* Full white on hover/focus */
+    }
+
+    /* Active link state */
+    .navbar-expand-lg.navbar-dark-custom .navbar-nav .nav-link.active {
+        color: #ffffff; /* White for active link */
+        font-weight: bold;
+    }
+
+    /* Dropdown toggle text */
+    .navbar-expand-lg.navbar-dark-custom .dropdown-toggle {
+        color: rgba(255, 255, 255, 0.8);
+    }
+    .navbar-expand-lg.navbar-dark-custom .dropdown-toggle:hover,
+    .navbar-expand-lg.navbar-dark-custom .dropdown-toggle:focus {
+        color: rgba(255, 255, 255, 1);
+    }
+
+    /* Navbar brand */
+    .navbar-expand-lg.navbar-dark-custom .navbar-brand {
+        /* Image doesn't need color, but if text was used */
+         /* color: #ffffff; */
+    }
+
+    /* Toggler icon */
+    .navbar-expand-lg.navbar-dark-custom .navbar-toggler {
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    .navbar-expand-lg.navbar-dark-custom .navbar-toggler-icon {
+         background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.8%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    }
+
+    /* Adjust dropdown menu */
+    /* It's better to target dropdown menu via its parent navbar */
+    .navbar-dark-custom .dropdown-menu {
+        background-color: #343a40;
+        border: 1px solid #444;
+    }
+     .navbar-dark-custom .dropdown-item {
+        color: rgba(255, 255, 255, 0.8);
+    }
+    .navbar-dark-custom .dropdown-item:hover,
+    .navbar-dark-custom .dropdown-item:focus {
+        color: #ffffff; /* Corrected color value */
+        background-color: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Ensure search button keeps light outline */
+    .navbar-dark-custom .btn-outline-light {
+         color: rgba(255, 255, 255, 0.8);
+         border-color: rgba(255, 255, 255, 0.5);
+    }
+     .navbar-dark-custom .btn-outline-light:hover {
+         color: #2c2c47; /* Dark text on hover */
+         background-color: #f8f9fa; /* Light background on hover */
+         border-color: #f8f9fa;
+    }
+
+} /* End media query */
+
+
+/* Container for the card image to enforce aspect ratio */
+/* Using slightly higher specificity */
+.search-results .card .card-img-container {
+    display: block; /* Ensure it behaves as a block */
+    position: relative;
+    width: 100%;
+    padding-top: 100%; /* 1:1 Aspect Ratio (Square). Change if you want rectangular */
+    overflow: hidden;
+    background-color: #f0f0f0; /* Lighter placeholder color */
+}
+
+/* Style the image itself within the container */
+/* Using slightly higher specificity */
+.card-img, .card-img-bottom, .card-img-top {
+    height:250px !important;
+    width: 100% !important;
+    object-fit: contain;
+    object-position: center;
+}

@@ -1,374 +1,615 @@
 {% extends 'base.html' %}
 {% load static %}
+
 {% block content %}
 <main class="container mt-4">
-  <h1>Create Your Outfit</h1>
-  <form method="POST">
-    {% csrf_token %}
-    <input type="hidden" name="outfit_data" id="outfit_data">
+    {# 1. Conditionally change title based on whether editing or creating #}
+    <h1>{% if outfit %}Edit Your Outfit{% else %}Create Your Outfit{% endif %}</h1>
 
-    <!-- Available Items (draggable thumbnails) -->
-    <div id="available-items" class="row">
-      {% for item in available_items %}
-        {% if item.primary_image %}
-          <div class="col-3 col-md-2 mb-2">
-            <img src="{{ item.primary_image.image.url }}"
-                 alt="{{ item.title }}"
-                 data-id="{{ item.id }}"
-                 draggable="true"
-                 class="img-fluid available-item"
-                 style="cursor: move; border: 1px solid #ddd; border-radius: 5px;">
-          </div>
-        {% endif %}
-      {% empty %}
-        <p>No items available.</p>
-      {% endfor %}
+    <div class="mb-3" id="category-filter-buttons">
+        <strong>Filter by Category:</strong>
+        {% for cat in all_categories %}
+            <button type="button"
+                    class="btn btn-sm {% if forloop.first %}btn-primary active{% else %}btn-outline-secondary{% endif %} filter-btn"
+                    data-filter-category="{{ cat }}">
+                {{ cat|default:"Uncategorized" }}
+            </button>
+        {% endfor %}
     </div>
 
-    <!-- Canvas for outfit composition -->
-    <section class="mb-3">
-      <h2>Canvas</h2>
-      <div id="canvas" 
-           style="position: relative; 
-                  max-width: 500px; 
-                  width: 100%; 
-                  height: auto; 
-                  aspect-ratio: 1 / 1; 
-                  border: 2px dashed #ccc; 
-                  background: #f9f9f9;">
-      </div>
-    </section>
+    <form method="POST" id="outfit-form" enctype="multipart/form-data">
+        {% if outfit %}
+            <input type="hidden" name="outfit_id" value="{{ outfit.id }}">
+        {% endif %}
+        {% csrf_token %}
+        <input type="hidden" name="outfit_data" id="outfit_data">
 
-    <!-- Controls -->
-    <aside class="mb-3">
-      <button type="submit" class="btn btn-primary">Save Outfit</button>
-      <button type="button" id="reset" class="btn btn-secondary">Reset</button>
-      <button type="button" id="scale-up" class="btn btn-outline-secondary">Scale Up</button>
-      <button type="button" id="scale-down" class="btn btn-outline-secondary">Scale Down</button>
-      <button type="button" id="move-up" class="btn btn-outline-secondary">Move Up</button>
-      <button type="button" id="move-down" class="btn btn-outline-secondary">Move Down</button>
-      <button type="button" id="delete-item" class="btn btn-danger">Delete Selected</button>
-    </aside>
-  </form>
+        <div id="available-items-container" class="border p-2 mb-3" style="max-height: 300px; overflow-y: auto;">
+            <p class="text-muted small">Click or Drag items to the canvas below.</p>
+            <div id="available-items" class="row">
+                {% for item in available_items %}
+                    {% comment %} Assumes view passes 'item.primary_image.image.url' and 'item.primary_image.image.alt' or similar {% endcomment %}
+                    {% if item.primary_image %} {# Check if primary_image object exists #}
+                        <div class="col-4 col-md-2 mb-2 available-item-wrapper" data-category="{{ item.category|default:'NONE' }}">
+                            <img src="{{ item.primary_image.image.url }}"
+                                 alt="{{ item.title|escapejs }}"
+                                 data-id="{{ item.id }}"
+                                 data-src="{{ item.primary_image.image.url }}" {# Pass URL for JS #}
+                                 draggable="true"
+                                 class="img-fluid available-item"
+                                 style="cursor: pointer; border: 1px solid #ddd; border-radius: 5px; max-width: 80px;">
+                            <small class="d-block text-muted" style="font-size: 0.75rem;">{{ item.title }}</small>
+                        </div>
+                    {% endif %}
+                {% empty %}
+                    <p>No items available.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <section class="mb-3">
+            <h2>Canvas</h2>
+            <div id="canvas"
+                 style="position: relative;
+                        max-width: 500px;
+                        width: 100%;
+                        height: auto;
+                        aspect-ratio: 1 / 1;
+                        border: 2px dashed #ccc;
+                        background: #f9f9f9;
+                        overflow: hidden;"> 
+
+            </div>
+        </section>
+
+        <aside class="mb-3">
+            <button type="submit" class="btn" style="background-color: #24d426; color: white;">Save Outfit</button>
+            <button type="button" id="reset" class="btn btn-secondary">Reset</button>
+            <button type="button" id="scale-up" class="btn btn-outline-secondary">Scale Up</button>
+            <button type="button" id="scale-down" class="btn btn-outline-secondary">Scale Down</button>
+            <button type="button" id="move-up" class="btn btn-outline-secondary">Move Up</button>
+            <button type="button" id="move-down" class="btn btn-outline-secondary">Move Down</button>
+            <button type="button" id="delete-item" class="btn btn-danger">Delete Selected</button>
+        </aside>
+    </form>
 </main>
 
-<!-- Include interact.js -->
+{# 2. Pass existing item data safely using json_script #}
+{{ existing_items_json|json_script:"existing-items-data" }}
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/interact.js/1.10.11/interact.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const canvas = document.getElementById('canvas');
-    const outfitDataInput = document.getElementById('outfit_data');
-
-    // Get canvas dimensions
-    function getCanvasSize() {
-        const rect = canvas.getBoundingClientRect();
-        return { width: rect.width, height: rect.height };
-    }
-
-    // Get all draggable items
-    function getDraggables() {
-        return canvas.querySelectorAll('.draggable');
-    }
-
-    // Drag from available items
-    document.querySelectorAll('#available-items img').forEach(item => {
-        item.addEventListener('dragstart', function(e) {
-            e.dataTransfer.setData('text/plain', JSON.stringify({
-                id: item.dataset.id,
-                src: item.src,
-                alt: item.alt
-            }));
-        });
-    });
-
-    // Drop onto canvas
-    canvas.addEventListener('dragover', e => e.preventDefault());
-    canvas.addEventListener('drop', function(e) {
-        e.preventDefault();
-        const data = JSON.parse(e.dataTransfer.getData('text/plain'));
-        if (canvas.querySelector(`.draggable[data-id="${data.id}"]`)) return;
-
-        const rect = canvas.getBoundingClientRect();
-        const offsetX = e.clientX - rect.left;
-        const offsetY = e.clientY - rect.top;
-
-        const container = document.createElement('div');
-        container.classList.add('draggable');
-        container.dataset.id = data.id;
-        const initX = offsetX - 40;
-        const initY = offsetY - 40;
-        container.dataset.x = initX;
-        container.dataset.y = initY;
-        container.dataset.scale = 1;
-
-        let maxZ = 0;
-        getDraggables().forEach(div => {
-            const zVal = parseInt(div.dataset.z) || 0;
-            if (zVal > maxZ) maxZ = zVal;
-        });
-        container.dataset.z = maxZ + 1;
-        container.style.zIndex = maxZ + 1;
-        container.style.position = 'absolute';
-        container.style.left = '0';
-        container.style.top = '0';
-        container.style.transform = `translate(${initX}px, ${initY}px) scale(1)`;
-
-        const img = document.createElement('img');
-        img.src = data.src;
-        img.alt = data.alt;
-        img.classList.add('item-image');
-        img.style.width = '80px';
-        img.style.height = 'auto';
-        container.appendChild(img);
-
-        const handleBL = document.createElement('div');
-        handleBL.classList.add('resize-handle', 'bottom-left');
-        const handleBR = document.createElement('div');
-        handleBR.classList.add('resize-handle', 'bottom-right');
-        container.appendChild(handleBL);
-        container.appendChild(handleBR);
-
-        container.addEventListener('click', function() {
+    document.addEventListener('DOMContentLoaded', function() {
+        const canvas = document.getElementById('canvas');
+        const outfitDataInput = document.getElementById('outfit_data');
+        const filterButtons = document.querySelectorAll('#category-filter-buttons .filter-btn');
+        const availableItemWrappers = document.querySelectorAll('#available-items .available-item-wrapper');
+        const availableItems = document.querySelectorAll('#available-items img.available-item');
+    
+        const TARGET_CANVAS_WIDTH = 500;
+        const TARGET_CANVAS_HEIGHT = 500;
+        const BASE_ITEM_WIDTH = 80;
+        console.log(`Constants Initialized: TARGET_CANVAS_WIDTH=${TARGET_CANVAS_WIDTH}, BASE_ITEM_WIDTH=${BASE_ITEM_WIDTH}`);
+    
+        // Helper Functions
+        function getCanvasSize() {
+            const rect = canvas.getBoundingClientRect();
+            const width = rect.width > 0 ? rect.width : TARGET_CANVAS_WIDTH;
+            const height = rect.height > 0 ? rect.height : TARGET_CANVAS_HEIGHT;
+            if (rect.width <= 0 || rect.height <= 0) {
+                console.warn(`getCanvasSize(): Non-positive dimensions. Rect:`, rect);
+            }
+            return { width: width, height: height };
+        }
+    
+        function getDraggables() {
+            return canvas.querySelectorAll('.draggable');
+        }
+    
+        function selectItem(element) {
+            if (!element) return;
             getDraggables().forEach(el => el.classList.remove('selected'));
-            container.classList.add('selected');
-        });
-        canvas.appendChild(container);
-    });
-
-    // Draggable with custom bounds
-    interact('.draggable').draggable({
-        listeners: {
-            move: event => {
-                const target = event.target;
-                let x = (parseFloat(target.dataset.x) || 0) + event.dx;
-                let y = (parseFloat(target.dataset.y) || 0) + event.dy;
-                const scale = parseFloat(target.dataset.scale) || 1;
-                const itemWidth = 80 * scale;
-                const itemHeight = 80 * scale;
-
-                const { width: cW, height: cH } = getCanvasSize();
-                const margin = itemWidth * 0.1;
-
-                x = Math.min(Math.max(x, -margin), cW - itemWidth + margin);
-                y = Math.min(Math.max(y, -margin), cH - itemHeight + margin);
-
-                target.dataset.x = x;
-                target.dataset.y = y;
-                target.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+            element.classList.add('selected');
+            console.log(`selectItem(): Selected element with data-id: ${element.dataset.id}`);
+        }
+    
+        function addItemToCanvas(itemData, initialX, initialY, initialScale = 1, initialZ = null) {
+            console.log(`addItemToCanvas(): Called for ID=${itemData.id}. Params: initialX=${initialX.toFixed(2)}, initialY=${initialY.toFixed(2)}, initialScale=${initialScale.toFixed(3)}, initialZ=${initialZ}`);
+            const existingItem = canvas.querySelector(`.draggable[data-id="${itemData.id}"]`);
+            if (existingItem) {
+                console.warn(`addItemToCanvas(): Item ${itemData.id} already on canvas. Selecting existing.`);
+                selectItem(existingItem);
+                return null;
             }
-        }
-    });
-
-    // Draggable with custom bounds
-    interact('.draggable').draggable({
-        listeners: {
-            move: event => {
-                const target = event.target;
-                let x = (parseFloat(target.dataset.x) || 0) + event.dx;
-                let y = (parseFloat(target.dataset.y) || 0) + event.dy;
-                const scale = parseFloat(target.dataset.scale) || 1;
-                const itemWidth = 80 * scale;  // Base width scaled
-                const itemHeight = 80 * scale; // Assuming square items; adjust if needed
-
-                const { width: cW, height: cH } = getCanvasSize();
-                const margin = cW*0.1; // 10% overlap
-
-                // New bounds: allow overlap by margin
-                x = Math.min(Math.max(x, -margin), 1.1*cW + margin - itemWidth);
-                y = Math.min(Math.max(y, -margin), 1.1*cH + margin - itemHeight);
-
-                target.dataset.x = x;
-                target.dataset.y = y;
-                target.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+    
+            const container = document.createElement('div');
+            container.classList.add('draggable');
+            container.dataset.id = itemData.id;
+            container.dataset.x = initialX;
+            container.dataset.y = initialY;
+            container.dataset.scale = initialScale;
+    
+            let itemZ;
+            if (initialZ !== null && !isNaN(parseInt(initialZ))) {
+                itemZ = parseInt(initialZ);
+                console.log(`addItemToCanvas(): Using provided Z=${itemZ} for item ${itemData.id}`);
+            } else {
+                let maxZ = 0;
+                getDraggables().forEach(div => {
+                    const zVal = parseInt(div.dataset.z) || 0;
+                    if (zVal > maxZ) maxZ = zVal;
+                });
+                itemZ = maxZ + 1;
+                console.log(`addItemToCanvas(): Calculated new Z=${itemZ} for item ${itemData.id}`);
             }
-        }
-    });
-
-    // Resizable with custom bounds
-    interact('.draggable').resizable({
-        preserveAspectRatio: true,
-        edges: { left: true, right: true, bottom: true, top: true },
-        inertia: true,
-        listeners: {
-            move: event => {
-                const target = event.target;
-                let newWidth = event.rect.width;
-                let newScale = newWidth / 80;
-                if (newScale < 0.1) newScale = 0.1;
-                if (newScale > 6) newScale = 6;
-
-                target.dataset.scale = newScale;
-
-                let x = parseFloat(target.dataset.x) || 0;
-                let y = parseFloat(target.dataset.y) || 0;
-                const itemWidth = 80 * newScale;
-                const itemHeight = 80 * newScale;
-                const { width: cW, height: cH } = getCanvasSize();
-                const margin = cW*0.1;
-
-                // New bounds: allow overlap by margin
-                x = Math.min(Math.max(x, -margin), 1.1*cW + margin - itemWidth);
-                y = Math.min(Math.max(y, -margin), 1.1*cH + margin - itemHeight);
-
-                target.dataset.x = x;
-                target.dataset.y = y;
-                target.style.transform = `translate(${x}px, ${y}px) scale(${newScale})`;
-            }
-        }
-    });
-
-    // Scale Up
-    document.getElementById('scale-up').addEventListener('click', function() {
-        const selected = document.querySelector('#canvas .draggable.selected');
-        if (selected) {
-            let scale = parseFloat(selected.dataset.scale) || 1;
-            scale += 0.1;
-            if (scale > 6) scale = 6;
-
-            let x = parseFloat(selected.dataset.x) || 0;
-            let y = parseFloat(selected.dataset.y) || 0;
-            const itemWidth = 80 * scale;
-            const itemHeight = 80 * scale;
-            const { width: cW, height: cH } = getCanvasSize();
-            const margin = itemWidth * 0.1;
-
-            // New bounds: allow overlap by margin
-            x = Math.min(Math.max(x, -margin), cW + margin - itemWidth);
-            y = Math.min(Math.max(y, -margin), cH + margin - itemHeight);
-
-            selected.dataset.scale = scale;
-            selected.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-        }
-    });
-
-    // Scale Down
-    document.getElementById('scale-down').addEventListener('click', function() {
-        const selected = document.querySelector('#canvas .draggable.selected');
-        if (selected) {
-            let scale = parseFloat(selected.dataset.scale) || 1;
-            scale -= 0.1;
-            if (scale < 0.1) scale = 0.1;
-
-            let x = parseFloat(selected.dataset.x) || 0;
-            let y = parseFloat(selected.dataset.y) || 0;
-            const itemWidth = 80 * scale;
-            const itemHeight = 80 * scale;
-            const { width: cW, height: cH } = getCanvasSize();
-            const margin = itemWidth * 0.1;
-
-            // New bounds: allow overlap by margin
-            x = Math.min(Math.max(x, -margin), cW + margin - itemWidth);
-            y = Math.min(Math.max(y, -margin), cH + margin - itemHeight);
-
-            selected.dataset.scale = scale;
-            selected.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
-        }
-    });
-
-    // Move Up (z-index)
-    document.getElementById('move-up').addEventListener('click', function() {
-        const selected = document.querySelector('#canvas .draggable.selected');
-        if (selected) {
-            let maxZ = 0;
-            getDraggables().forEach(div => {
-                const zVal = parseInt(div.dataset.z) || 0;
-                if (zVal > maxZ) maxZ = zVal;
+            container.dataset.z = itemZ;
+            container.style.zIndex = itemZ;
+    
+            container.style.position = 'absolute';
+            container.style.left = '0px';
+            container.style.top = '0px';
+            const transformValue = `translate(${initialX.toFixed(2)}px, ${initialY.toFixed(2)}px) scale(${initialScale.toFixed(3)})`;
+            container.style.transform = transformValue;
+    
+            console.log(`addItemToCanvas(): Item ${itemData.id} created. Set data-scale=${container.dataset.scale}, z-index=${container.style.zIndex}, transform="${transformValue}"`);
+    
+            const img = document.createElement('img');
+            img.src = itemData.src;
+            img.alt = itemData.alt;
+            img.classList.add('item-image');
+            container.appendChild(img);
+    
+            const handleBL = document.createElement('div');
+            handleBL.classList.add('resize-handle', 'bottom-left');
+            const handleBR = document.createElement('div');
+            handleBR.classList.add('resize-handle', 'bottom-right');
+            container.appendChild(handleBL);
+            container.appendChild(handleBR);
+    
+            container.addEventListener('click', function(event) {
+                event.stopPropagation();
+                selectItem(container);
             });
-            const newZ = maxZ + 1;
-            selected.dataset.z = newZ;
-            selected.style.zIndex = newZ;
+    
+            canvas.appendChild(container);
+            console.log(`addItemToCanvas(): Item ${itemData.id} appended to canvas.`);
+    
+            setupInteract(container);
+            console.log(`addItemToCanvas(): Interact setup for Item ${itemData.id}.`);
+    
+            return container;
         }
-    });
-
-    // Move Down (z-index)
-    document.getElementById('move-down').addEventListener('click', function() {
-        const selected = document.querySelector('#canvas .draggable.selected');
-        if (selected) {
-            selected.dataset.z = 0;
-            selected.style.zIndex = 0;
+    
+        function setupInteract(element) {
+            interact(element)
+                .draggable({
+                    listeners: {
+                        move: event => {
+                            const target = event.target;
+                            let x = (parseFloat(target.dataset.x) || 0) + event.dx;
+                            let y = (parseFloat(target.dataset.y) || 0) + event.dy;
+                            const scale = parseFloat(target.dataset.scale) || 1;
+                            target.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scale(${scale.toFixed(3)})`;
+                            target.dataset.x = x;
+                            target.dataset.y = y;
+                        },
+                        end: event => {
+                            console.log(`Draggable End: ID=${event.target.dataset.id}, Final Pos X=${parseFloat(event.target.dataset.x).toFixed(2)}, Y=${parseFloat(event.target.dataset.y).toFixed(2)}`);
+                        }
+                    },
+                    inertia: true,
+                    modifiers: [interact.modifiers.restrictRect({ restriction: 'parent', endOnly: false })]
+                })
+                .resizable({
+                    edges: { left: true, right: true, bottom: true, top: true },
+                    listeners: {
+                        move: event => {
+                            const target = event.target;
+                            let x = parseFloat(target.dataset.x) || 0;
+                            let y = parseFloat(target.dataset.y) || 0;
+                            let newScale = event.rect.width / BASE_ITEM_WIDTH;
+                            newScale = Math.max(0.1, Math.min(newScale, 6.0));
+                            x += event.deltaRect.left;
+                            y += event.deltaRect.top;
+                            target.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scale(${newScale.toFixed(3)})`;
+                            target.dataset.x = x;
+                            target.dataset.y = y;
+                            target.dataset.scale = newScale;
+                            target.style.width = `${BASE_ITEM_WIDTH}px`;
+                            target.style.height = `auto`;
+                        },
+                        end: event => {
+                            const target = event.target;
+                            const finalScale = parseFloat(target.dataset.scale);
+                            target.style.width = `${BASE_ITEM_WIDTH}px`;
+                            target.style.height = 'auto';
+                            console.log(`Resizable End: ID=${target.dataset.id}, Final Scale: ${finalScale.toFixed(3)}`);
+                        }
+                    },
+                    modifiers: [
+                        interact.modifiers.restrictSize({
+                            min: { width: BASE_ITEM_WIDTH * 0.1, height: BASE_ITEM_WIDTH * 0.1 },
+                            max: { width: BASE_ITEM_WIDTH * 6, height: BASE_ITEM_WIDTH * 6 }
+                        })
+                    ],
+                    inertia: false,
+                    preserveAspectRatio: true
+                });
         }
-    });
-
-    // Delete Selected Item
-    document.getElementById('delete-item').addEventListener('click', function() {
-        const selected = document.querySelector('#canvas .draggable.selected');
-        if (selected) {
-            canvas.removeChild(selected);
+    
+        // Event Listeners
+        availableItems.forEach(item => {
+            item.addEventListener('dragstart', function(e) {
+                if (canvas.querySelector(`.draggable[data-id="${e.target.dataset.id}"]`)) {
+                    console.warn(`dragstart: Item ${e.target.dataset.id} already on canvas, drag prevented.`);
+                    e.preventDefault();
+                    selectItem(canvas.querySelector(`.draggable[data-id="${e.target.dataset.id}"]`));
+                    return;
+                }
+                const altText = e.target.alt || '';
+                const itemData = { id: e.target.dataset.id, src: e.target.src, alt: altText };
+                e.dataTransfer.setData('text/plain', JSON.stringify(itemData));
+                e.dataTransfer.effectAllowed = "copy";
+            });
+        });
+    
+        canvas.addEventListener('dragover', e => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+        });
+    
+        canvas.addEventListener('drop', function(e) {
+            e.preventDefault();
+            try {
+                const dataString = e.dataTransfer.getData('text/plain');
+                if (!dataString) {
+                    console.error("drop: No data transferred.");
+                    return;
+                }
+                const data = JSON.parse(dataString);
+                const rect = canvas.getBoundingClientRect();
+                const dropX = e.clientX - rect.left;
+                const dropY = e.clientY - rect.top;
+                const initialX = dropX - (BASE_ITEM_WIDTH / 2);
+                const initialY = dropY - (BASE_ITEM_WIDTH / 2);
+                const newItem = addItemToCanvas(data, initialX, initialY, 1, null);
+                if (newItem) { selectItem(newItem); }
+            } catch (error) {
+                console.error("drop: Error processing drop event.", error);
+            }
+        });
+    
+        availableItems.forEach(item => {
+            item.addEventListener('click', function(e) {
+                const itemData = { id: e.target.dataset.id, src: e.target.dataset.src, alt: e.target.alt || '' };
+                const initialX = 0;
+                const initialY = 0;
+                const clickScale = 0.75;
+                console.log(`click availableItem: Adding item ID=${itemData.id}. Target Pos X=${initialX}, Y=${initialY}. Fixed Click Scale=${clickScale}`);
+                const newItem = addItemToCanvas(itemData, initialX, initialY, clickScale, null);
+                if (newItem) { selectItem(newItem); }
+            });
+        });
+    
+        canvas.addEventListener('click', function(event) {
+            if (event.target === canvas) {
+                getDraggables().forEach(el => el.classList.remove('selected'));
+            }
+        });
+    
+        document.getElementById('scale-up').addEventListener('click', function() {
+            const selected = document.querySelector('#canvas .draggable.selected');
+            if (selected) {
+                let scale = parseFloat(selected.dataset.scale) || 1;
+                scale = Math.min(scale + 0.1, 6);
+                selected.dataset.scale = scale.toFixed(3);
+                const x = parseFloat(selected.dataset.x) || 0;
+                const y = parseFloat(selected.dataset.y) || 0;
+                selected.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scale(${scale.toFixed(3)})`;
+            }
+        });
+    
+        document.getElementById('scale-down').addEventListener('click', function() {
+            const selected = document.querySelector('#canvas .draggable.selected');
+            if (selected) {
+                let scale = parseFloat(selected.dataset.scale) || 1;
+                scale = Math.max(scale - 0.1, 0.1);
+                selected.dataset.scale = scale.toFixed(3);
+                const x = parseFloat(selected.dataset.x) || 0;
+                const y = parseFloat(selected.dataset.y) || 0;
+                selected.style.transform = `translate(${x.toFixed(2)}px, ${y.toFixed(2)}px) scale(${scale.toFixed(3)})`;
+            }
+        });
+    
+        document.getElementById('move-up').addEventListener('click', function() {
+            const selected = document.querySelector('#canvas .draggable.selected');
+            if (!selected) return;
+            const draggables = Array.from(getDraggables());
+            draggables.sort((a, b) => (parseInt(a.dataset.z) || 0) - (parseInt(b.dataset.z) || 0));
+            const currentIndex = draggables.findIndex(el => el === selected);
+            const currentZ = parseInt(selected.dataset.z) || 0;
+            if (currentIndex < draggables.length - 1) {
+                const itemAbove = draggables[currentIndex + 1];
+                const zAbove = parseInt(itemAbove.dataset.z) || 0;
+                selected.dataset.z = zAbove;
+                selected.style.zIndex = zAbove;
+                itemAbove.dataset.z = currentZ;
+                itemAbove.style.zIndex = currentZ;
+                console.log(`Move Up: Swapped Z. Item ${selected.dataset.id} new Z=${zAbove}. Item ${itemAbove.dataset.id} new Z=${currentZ}`);
+            }
+        });
+    
+        document.getElementById('move-down').addEventListener('click', function() {
+            const selected = document.querySelector('#canvas .draggable.selected');
+            if (!selected) return;
+            const draggables = Array.from(getDraggables());
+            draggables.sort((a, b) => (parseInt(a.dataset.z) || 0) - (parseInt(b.dataset.z) || 0));
+            const currentIndex = draggables.findIndex(el => el === selected);
+            const currentZ = parseInt(selected.dataset.z) || 0;
+            if (currentIndex > 0) {
+                const itemBelow = draggables[currentIndex - 1];
+                const zBelow = parseInt(itemBelow.dataset.z) || 0;
+                selected.dataset.z = zBelow;
+                selected.style.zIndex = zBelow;
+                itemBelow.dataset.z = currentZ;
+                itemBelow.style.zIndex = currentZ;
+                console.log(`Move Down: Swapped Z. Item ${selected.dataset.id} new Z=${zBelow}. Item ${itemBelow.dataset.id} new Z=${currentZ}`);
+            }
+        });
+    
+        document.getElementById('delete-item').addEventListener('click', function() {
+            const selected = document.querySelector('#canvas .draggable.selected');
+            if (selected) {
+                const deletedId = selected.dataset.id;
+                if (interact.isSet(selected)) {
+                    interact(selected).unset();
+                }
+                selected.remove();
+                console.log(`Delete: Element removed for ID=${deletedId}`);
+            }
+        });
+    
+        // Updated Form Submission Handler
+        const outfitForm = document.getElementById('outfit-form');
+        if (!outfitForm) {
+            console.error("Form Submit: Cannot find #outfit-form element.");
+        } else {
+            console.log("Form Submit: Found #outfit-form element, attaching listener.");
+            outfitForm.addEventListener('submit', function(e) {
+                console.log("Form Submit: Event triggered.");
+    
+                if (!outfitDataInput) {
+                    console.error("Form Submit: Cannot find #outfit_data input element.");
+                    e.preventDefault();
+                    return;
+                }
+    
+                const { width: currentWidth, height: currentHeight } = getCanvasSize();
+                console.log(`Form Submit: Canvas size: ${currentWidth}x${currentHeight}`);
+                if (currentWidth <= 0 || currentHeight <= 0) {
+                    console.error("Form Submit: Invalid canvas dimensions:", currentWidth, currentHeight);
+                    e.preventDefault();
+                    return;
+                }
+    
+                const outfitItems = Array.from(getDraggables()).map(div => {
+                    const currentX = parseFloat(div.dataset.x) || 0;
+                    const currentY = parseFloat(div.dataset.y) || 0;
+                    const currentScale = parseFloat(div.dataset.scale) || 1;
+                    const currentZ = parseInt(div.dataset.z) || 0;
+                    const normalizedX = (currentX / currentWidth) * TARGET_CANVAS_WIDTH;
+                    const normalizedY = (currentY / currentHeight) * TARGET_CANVAS_HEIGHT;
+                    console.log(`Form Submit: Mapping Item ${div.dataset.id}: Raw Pos (${currentX.toFixed(2)}, ${currentY.toFixed(2)}), Scale ${currentScale.toFixed(3)}, Z ${currentZ} -> Norm Pos (${normalizedX.toFixed(2)}, ${normalizedY.toFixed(2)})`);
+                    return { product_id: div.dataset.id, x: normalizedX, y: normalizedY, scale: currentScale, z_index: currentZ };
+                });
+    
+                const jsonData = JSON.stringify(outfitItems);
+                console.log("Form Submit: Outfit items calculated:", outfitItems);
+                outfitDataInput.value = jsonData;
+                console.log("Form Submit: Set outfit_data to:", outfitDataInput.value);
+    
+            });
         }
+    
+        document.getElementById('reset').addEventListener('click', function() {
+            getDraggables().forEach(item => {
+                if (interact.isSet(item)) { interact(item).unset(); }
+                item.remove();
+            });
+            outfitDataInput.value = '[]';
+            console.log("Reset: Canvas cleared and outfit data reset.");
+        });
+    
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                filterButtons.forEach(btn => {
+                    btn.classList.remove('active', 'btn-primary');
+                    btn.classList.add('btn-outline-secondary');
+                });
+                this.classList.add('active', 'btn-primary');
+                this.classList.remove('btn-outline-secondary');
+                const selectedCategory = this.getAttribute('data-filter-category');
+                availableItemWrappers.forEach(wrapper => {
+                    const itemCategory = wrapper.getAttribute('data-category');
+                    if (selectedCategory === 'ALL' || itemCategory === selectedCategory) {
+                        wrapper.style.display = '';
+                    } else {
+                        wrapper.style.display = 'none';
+                    }
+                });
+            });
+        });
+    
+        function loadExistingItems() {
+            console.log("loadExistingItems(): Function called.");
+            const dataElement = document.getElementById('existing-items-data');
+            if (!dataElement) {
+                console.error("loadExistingItems(): Data element 'existing-items-data' not found.");
+                outfitDataInput.value = '[]';
+                return;
+            }
+    
+            console.log("loadExistingItems(): Found data element:", dataElement);
+            const rawJsonData = dataElement.textContent;
+            console.log("loadExistingItems(): Raw textContent from data element:", JSON.stringify(rawJsonData));
+    
+            let existingItemsData = [];
+            try {
+                if (!rawJsonData || !rawJsonData.trim() || rawJsonData.trim() === '"[]"') {
+                    console.log("loadExistingItems(): textContent is null, empty, whitespace, or just '\"[]\"'. No items to load.");
+                    outfitDataInput.value = '[]';
+                    return;
+                }
+                existingItemsData = JSON.parse(rawJsonData);
+                existingItemsData = JSON.parse(existingItemsData);
+                console.log("loadExistingItems(): JSON parse successful. Parsed data:", existingItemsData);
+            } catch (e) {
+                console.error("loadExistingItems(): Failed to parse JSON data.", e);
+                outfitDataInput.value = '[]';
+                return;
+            }
+    
+            if (Array.isArray(existingItemsData) && existingItemsData.length > 0) {
+                console.log(`loadExistingItems(): Found ${existingItemsData.length} valid items in parsed data.`);
+                const { width: currentWidth, height: currentHeight } = getCanvasSize();
+                if (currentWidth <= 0 || currentHeight <= 0) {
+                    console.warn("loadExistingItems(): Canvas size not ready, retrying...");
+                    setTimeout(loadExistingItems, 100);
+                    return;
+                }
+                console.log(`loadExistingItems(): Denormalizing based on canvas size: ${currentWidth}x${currentHeight}`);
+                existingItemsData.sort((a, b) => (a.z_index || 0) - (b.z_index || 0));
+                existingItemsData.forEach(itemData => {
+                    const availableItemImg = document.querySelector(`#available-items img.available-item[data-id="${itemData.product_id}"]`);
+                    if (!availableItemImg) {
+                        console.warn(`loadExistingItems(): Could not find available item image for ID ${itemData.product_id}. Skipping.`);
+                        return;
+                    }
+                    const displayData = {
+                        id: itemData.product_id.toString(),
+                        src: availableItemImg.dataset.src,
+                        alt: availableItemImg.alt
+                    };
+                    const displayX = (itemData.position_x / TARGET_CANVAS_WIDTH) * currentWidth;
+                    const displayY = (itemData.position_y / TARGET_CANVAS_HEIGHT) * currentHeight;
+                    addItemToCanvas(displayData, displayX, displayY, itemData.scale, itemData.z_index);
+                });
+                console.log("loadExistingItems(): Finished processing loaded items.");
+            } else {
+                console.log("loadExistingItems(): No items to load or invalid data.");
+                outfitDataInput.value = '[]';
+            }
+        }
+    
+        console.log("Initial Setup: Scheduling loadExistingItems.");
+        setTimeout(loadExistingItems, 150);
+        console.log("Initial Setup: DOMContentLoaded complete, basic listeners attached.");
     });
-
-    // Save outfit state
-    document.querySelector('form').addEventListener('submit', function() {
-        const outfitItems = Array.from(getDraggables()).map(div => ({
-            product_id: div.dataset.id,
-            x: parseFloat(div.dataset.x) || 0,
-            y: parseFloat(div.dataset.y) || 0,
-            scale: parseFloat(div.dataset.scale) || 1,
-            z_index: parseInt(div.dataset.z) || 0
-        }));
-        outfitDataInput.value = JSON.stringify(outfitItems);
-    });
-
-    // Reset
-    document.getElementById('reset').addEventListener('click', function() {
-        canvas.innerHTML = '';
-        outfitDataInput.value = '';
-    });
-});
-</script>
-
+    </script>
 <style>
-.draggable {
-    width: 80px; /* base container width */
-    position: absolute;
-    user-select: none;
-}
-.draggable.selected {
-    border: 2px dashed blue;
-    box-shadow: 0 0 5px blue;
-    position: relative;
-}
-.draggable.selected::before,
-.draggable.selected::after {
-    content: "";
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    background: blue;
-    border-radius: 50%;
-}
-.draggable.selected::before {
-    top: -4px;
-    left: -4px;
-}
-.draggable.selected::after {
-    top: -4px;
-    right: -4px;
-}
-.resize-handle {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    background: blue;
-    border-radius: 50%;
-}
-.resize-handle.bottom-left {
-    bottom: -4px;
-    left: -4px;
-}
-.resize-handle.bottom-right {
-    bottom: -4px;
-    right: -4px;
-}
-.available-item {
-    max-width: 80px;
-    height: auto;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-}
-button {
-    margin-right: 10px;
-    margin-top: 5px;
-}
+    /* ++ START: Styles for Filtering ++ */
+    #category-filter-buttons .filter-btn.active { /* Managed by Bootstrap */ }
+    .available-item-wrapper[style*="display: none"] {
+        padding: 0 !important; margin: 0 !important; border: none !important;
+        width: 0 !important; height: 0 !important; overflow: hidden !important;
+        visibility: hidden; /* Ensure it's fully hidden */
+    }
+    #available-items-container {
+        background-color: #f8f9fa; /* Light background for item list */
+    }
+    /* ++ END: Styles for Filtering ++ */
+
+    /* --- Styles for Draggable Items on Canvas --- */
+    .draggable {
+        position: absolute;
+        width: 80px; /* Base width */
+        height: auto;
+        cursor: grab;
+        user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select: none;
+        -ms-touch-action: none;
+        touch-action: none;
+        transform-origin: 0 0; 
+   
+    }
+
+    .draggable:active {
+        cursor: grabbing; /* Feedback while dragging */
+    }
+
+    
+    .draggable .item-image {
+        display: block;
+        width: 100%;
+        height: auto;
+        object-fit: contain;
+        pointer-events: none;
+        border: 1px solid rgba(0,0,0,0.1);
+    }
+
+
+    .draggable.selected {
+        outline: 2px dashed blue;
+        outline-offset: 3px; /* Space between item and outline */
+        /* box-shadow: 0 0 8px rgba(0, 0, 255, 0.5); */ /* Alternative selection style */
+    }
+
+    .resize-handle {
+        position: absolute;
+        width: 12px; /* Slightly larger for easier touch */
+        height: 12px;
+        background: blue;
+        border: 1px solid white;
+        border-radius: 50%;
+        z-index: 10; /* Ensure handles are above item */
+        display: none; /* Hide handles by default */
+    }
+    .draggable.selected .resize-handle {
+         display: block; /* Show handles only when selected */
+    }
+
+    .resize-handle.bottom-left {
+        bottom: -6px; /* Center handle on corner */
+        left: -6px;
+        cursor: nesw-resize;
+    }
+    .resize-handle.bottom-right {
+        bottom: -6px;
+        right: -6px;
+        cursor: nwse-resize;
+    }
+    /* --- Styles for Available Items List --- */
+   .available-item {
+        /* max-width: 80px; */ /* Set inline for now */
+        /* height: auto; */
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        display: block;
+        margin: 0 auto; /* Center in column */
+        background-color: #fff; /* Ensure background if image is transparent */
+        transition: transform 0.1s ease-out; /* Subtle hover effect */
+    }
+    .available-item:hover {
+         transform: scale(1.05); /* Slightly enlarge on hover */
+         box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .available-item-wrapper {
+        text-align: center;
+        cursor: pointer; /* Indicate clickable wrapper */
+    }
+
+    /* --- General Styles --- */
+    button {
+        margin-right: 5px; /* Consistent spacing */
+        margin-top: 5px;
+        margin-bottom: 5px;
+    }
+    #canvas {
+        user-select: none;
+        -webkit-user-select: none;
+        -ms-user-select: none;
+        overflow: hidden; /* Prevent content spilling out visually */
+    }
 </style>
 {% endblock %}

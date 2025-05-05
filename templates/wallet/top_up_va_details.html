@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Complete Your Top-Up{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+     <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                 <div class="card-header bg-info text-white">
+                    <h4 class="mb-0"><i class="fas fa-university"></i> Complete Your Top-Up</h4>
+                </div>
+                 <div class="card-body">
+                    <p class="lead">Please pay the exact amount below using the provided details:</p>
+                    <hr>
+                    {% if va_details %}
+                        <dl class="row">
+                            <dt class="col-sm-5">Amount:</dt>
+                            <dd class="col-sm-7"><strong>₱{{ va_details.amount|floatformat:2|intcomma }}</strong></dd>
+
+                            <dt class="col-sm-5">Payment Channel:</dt>
+                            <dd class="col-sm-7">{{ va_details.channel_code }}</dd>
+
+                            <dt class="col-sm-5">Account Number:</dt>
+                            <dd class="col-sm-7"><strong>{{ va_details.account_number }}</strong></dd>
+
+                             {% if va_details.name %}
+                            <dt class="col-sm-5">Account Name:</dt>
+                            <dd class="col-sm-7">{{ va_details.name }}</dd>
+                            {% endif %}
+
+                             {% if va_details.expires_at %}
+                            <dt class="col-sm-5">Expires At:</dt>
+                            <dd class="col-sm-7">{{ va_details.expires_at|date:"F d, Y, P T" }}</dd>
+                             {% endif %}
+                        </dl>
+                        <p class="text-muted small">Please make the payment before the expiration time. Your wallet balance will be updated once the payment is confirmed.</p>
+                    {% else %}
+                        <p class="text-danger">Payment details could not be loaded.</p>
+                    {% endif %}
+                     <hr>
+                     <div class="text-center">
+                          <a href="{% url 'dashboard:dashboard' %}" class="btn btn-primary">Back to Dashboard</a>
+                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

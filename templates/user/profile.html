@@ -1,0 +1,233 @@
+{# templates/user/profile.html #}
+{% extends 'base.html' %}
+{% load humanize %}
+{% load static %} {# Load static for placeholders #}
+
+{% block title %}{{ user.username }}'s Profile{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5"> {# Added mb-5 for spacing above mobile nav #}
+
+    {# Display Messages #}
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    {# --- Profile Info Row --- #}
+    <div class="row mb-4">
+        <div class="col-md-4 text-center mb-3">
+            <img src="{{ profile.get_picture_url }}" alt="{{ user.username }}'s profile picture" class="img-fluid rounded-circle mb-3" style="width: 180px; height: 180px; object-fit: cover; border: 3px solid #dee2e6;">
+            <a href="{% url 'user:update_profile' %}" class="btn btn-primary btn-sm mt-2 d-block"><i class="fas fa-edit"></i> Edit Profile</a>
+            <a href="{% url 'user:public_profile' user.username %}" class="btn btn-outline-secondary btn-sm mt-2 d-block" target="_blank"><i class="fas fa-eye"></i> View Public Profile</a>
+            <a href="{% url 'dashboard:dashboard' %}" class="btn btn-info btn-sm mt-2 d-block"><i class="fas fa-tachometer-alt"></i> Go to Dashboard</a>
+            <a href="{% url 'user:logout' %}" class="btn btn-danger btn-sm mt-2 d-block"><i class="fas fa-sign-out-alt fa-fw me-2"></i>Logout</a>
+        </div>
+        <div class="col-md-8">
+            {# --- Account Info Card --- #}
+            <div class="card mb-3 shadow-sm">
+                 <div class="card-header">Account Information</div>
+                 <div class="card-body">
+                     <p><strong>Username:</strong> {{ user.username }}</p>
+                     <p><strong>Email:</strong> {{ user.email }} {% if user.is_email_verified %}<span class="badge bg-success">Verified</span>{% else %}<span class="badge bg-warning text-dark">Not Verified</span>{% endif %}</p>
+                     <p><strong>Joined:</strong> {{ user.date_created|naturalday }} ({{ user.account_age }} days ago)</p>
+                     {% if user.wallet %}
+                     <p><strong>Wallet Balance:</strong> {{ user.wallet.balance|default:0 }} Credits</p>
+                     {% endif %}
+                 </div>
+            </div>
+
+             {# --- Quick Access Buttons --- #}
+             <div class="card mb-3 shadow-sm">
+                <div class="card-header">Quick Access</div>
+                 <div class="card-body d-flex flex-wrap gap-2 justify-content-center">
+                     <a href="{% url 'cart:cart_list' %}" class="btn btn-outline-primary btn-sm">
+                         <i class="fas fa-shopping-cart me-1"></i> My Cart
+                     </a>
+                     <a href="{% url 'cart:saved_list' %}" class="btn btn-outline-danger btn-sm">
+                         <i class="far fa-heart me-1"></i> Saved Items
+                     </a>
+                     <a href="{% url 'orders:order_list' %}" class="btn btn-outline-info btn-sm"> {# Assuming orders app URL #}
+                         <i class="fas fa-receipt me-1"></i> My Orders
+                     </a>
+                      <a href="{% url 'dashboard:all_transactions' %}" class="btn btn-outline-success btn-sm"> {# Assuming dashboard URL #}
+                         <i class="fas fa-wallet me-1"></i> Wallet History
+                     </a>
+                     {# Add more links as needed #}
+                 </div>
+             </div>
+             {# --- End Quick Access Buttons --- #}
+
+             {# --- Profile Details Card --- #}
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header">Profile Details</div>
+                 <div class="card-body">
+                     <p><strong>First Name:</strong> {{ profile.first_name|default:"Not set" }}</p>
+                     <p><strong>Last Name:</strong> {{ profile.last_name|default:"Not set" }}</p>
+                     <p><strong>Bio:</strong> {{ profile.bio|linebreaksbr|default:"Not set" }}</p>
+                     <p><strong>Location:</strong> {{ profile.location|default:"Not set" }}</p>
+                     <p><strong>Contact Number:</strong> {{ profile.contact_number|default:"Not set" }}</p>
+                 </div>
+            </div>
+             {# --- AI Details Card --- #}
+             <div class="card shadow-sm">
+                <div class="card-header">Optional Details (for AI Features)</div>
+                 <div class="card-body">
+                     <p><strong>Gender: </strong> {% if profile.gender %}{{ profile.get_gender_display }}{% else %}Not set{% endif %}</p>
+                     <p><strong>Age:</strong> {% if profile.age %}{{ profile.age }} years{% else %}Not set{% endif %}</p>
+                     <p><strong>Height:</strong> {% if profile.height_cm %}{{ profile.height_cm }} cm{% else %}Not set{% endif %}</p>
+                     <p><strong>Weight:</strong> {% if profile.weight_kg %}{{ profile.weight_kg }} kg{% else %}Not set{% endif %}</p>
+                     <p><strong>Ethnicity:</strong> {{ profile.ethnicity_ai|default:"Not set" }}</p>
+                     <p><strong>Body Type:</strong> {{ profile.body_type_ai|default:"Not set" }}</p>
+                     <p><strong>Other Features Notes:</strong> {{ profile.appearance_prompt_notes|linebreaksbr|default:"Not set" }}</p>
+                 </div>
+            </div>
+        </div>
+    </div>
+
+    {# --- My Outfits Section --- #}
+    <hr>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2><i class="fas fa-tshirt"></i> My Saved Outfits ({{ outfits.count }})</h2>
+        <a href="{% url 'mix_and_match:create_outfit' %}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Create New Outfit
+        </a>
+    </div>
+
+    {% if outfits %}
+        <div class="row row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
+            {% for outfit in outfits %}
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-img-container" style="background-color: #f8f9fa;">
+                        <a href="{% url 'mix_and_match:preview_outfit' outfit.id %}">
+                            <img src="{{ outfit.display_image_url }}"
+                                 class="card-img-top"
+                                 alt="Outfit Preview for {{ outfit.id }}"
+                                 style="object-fit: contain; aspect-ratio: 1 / 1;">
+                        </a>
+                    </div>
+                    <div class="card-body d-flex flex-column p-2">
+                        <h6 class="card-subtitle mb-1 text-muted small">
+                            Created: {{ outfit.created_at|naturalday }}
+                        </h6>
+                        <p class="card-text small mb-1">{{ outfit.item_count }} item{{ outfit.item_count|pluralize }}.</p>
+                        {% if outfit.ai_result %}
+                            <span class="badge bg-info text-dark mb-2"><i class="fas fa-robot"></i> AI Generated</span>
+                        {% endif %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                             <span class="badge {% if outfit.is_public %}bg-success{% else %}bg-secondary{% endif %}" id="privacy-status-{{ outfit.id }}">
+                                {% if outfit.is_public %}Public{% else %}Private{% endif %}
+                            </span>
+                            <button class="btn btn-sm {% if outfit.is_public %}btn-outline-secondary{% else %}btn-outline-success{% endif %} toggle-privacy-btn py-0 px-1"
+                                    style="font-size: 0.75rem;"
+                                    data-outfit-id="{{ outfit.id }}"
+                                    data-url="{% url 'mix_and_match:toggle_outfit_privacy' outfit.id %}">
+                                {% if outfit.is_public %}Make Private{% else %}Make Public{% endif %}
+                            </button>
+                        </div>
+                        <div class="mt-auto btn-toolbar justify-content-center" role="toolbar">
+                            <div class="btn-group btn-group-sm w-100" role="group">
+                                <a href="{% url 'mix_and_match:preview_outfit' outfit.id %}" class="btn btn-outline-primary flex-grow-1" title="Preview Outfit"><i class="fas fa-eye"></i></a>
+                                <a href="{% url 'mix_and_match:edit_outfit' outfit.id %}" class="btn btn-outline-secondary flex-grow-1" title="Edit Outfit"><i class="fas fa-edit"></i></a>
+                                <form action="{% url 'mix_and_match:delete_outfit' outfit.id %}" method="POST" class="d-inline flex-grow-1" onsubmit="return confirm('Are you sure you want to delete this outfit?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-danger w-100" title="Delete Outfit"><i class="fas fa-trash"></i></button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>You haven't created any outfits yet.</p>
+    {% endif %}
+
+</div>
+
+{# Pass CSRF token for JavaScript #}
+<input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+{% endblock %}
+
+{% block extra_js %} {# Changed from extra_scripts to match preview_outfit.html #}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const privacyToggleButtons = document.querySelectorAll('.toggle-privacy-btn');
+
+    privacyToggleButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const outfitId = this.dataset.outfitId;
+            const url = this.dataset.url;
+            // Find the CSRF token input in the page
+            const csrfTokenInput = document.querySelector('input[name=csrfmiddlewaretoken]');
+            if (!csrfTokenInput) {
+                 console.error('CSRF token input not found!');
+                 alert('An error occurred. Could not verify request.');
+                 return; // Stop if token not found
+            }
+            const csrfToken = csrfTokenInput.value;
+            const statusBadge = document.getElementById(`privacy-status-${outfitId}`);
+
+            // Disable button temporarily
+            this.disabled = true;
+            const originalButtonText = this.textContent;
+            this.textContent = '...'; // Indicate loading
+
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrfToken,
+                    'Content-Type': 'application/json', // Indicate JSON content type
+                    'X-Requested-With': 'XMLHttpRequest' // Standard header for AJAX
+                },
+                // body: JSON.stringify({}) // No body needed for this toggle
+            })
+            .then(response => {
+                // Try to parse JSON regardless of response.ok to get error details
+                return response.json().then(data => {
+                    if (!response.ok) {
+                         // Throw an error with the message from the JSON body if available
+                         throw new Error(data.error || `HTTP error ${response.status}`);
+                    }
+                    return data; // Pass parsed data along if response was ok
+                });
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    // Update badge
+                    statusBadge.textContent = data.is_public ? 'Public' : 'Private';
+                    statusBadge.classList.toggle('bg-success', data.is_public);
+                    statusBadge.classList.toggle('bg-secondary', !data.is_public);
+
+                    // Update button text and style
+                    this.textContent = data.is_public ? 'Make Private' : 'Make Public';
+                    this.classList.toggle('btn-outline-secondary', data.is_public);
+                    this.classList.toggle('btn-outline-success', !data.is_public);
+
+                    console.log(`Outfit ${outfitId} privacy updated to ${data.is_public ? 'Public' : 'Private'}`);
+                } else {
+                    // This case might not be reached if error is thrown above, but good for safety
+                    alert(`Error: ${data.error || 'Could not update privacy.'}`);
+                    this.textContent = originalButtonText; // Restore original text on failure
+                }
+            })
+            .catch(error => {
+                console.error('Error toggling outfit privacy:', error);
+                alert(`Failed to update outfit privacy. ${error.message}`);
+                 this.textContent = originalButtonText; // Restore original text on failure
+            })
+            .finally(() => {
+                 this.disabled = false; // Re-enable button regardless of outcome
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

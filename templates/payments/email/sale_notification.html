@@ -1,0 +1,24 @@
+<p>Hi Seller,</p>
+
+<p>Good news! You've made a sale on Ukay Marketplace.</p>
+
+<p>
+    <strong>Order ID:</strong> {{ order_short_id }}...<br>
+    <strong>Buyer:</strong> {{ buyer_info }}
+</p>
+
+<p><strong>Item(s) Sold:</strong></p>
+<ul>
+{% for item in sold_items %}
+    <li>{{ item.product_title }} (Qty: {{ item.quantity }}) @ ₱{{ item.price|floatformat:2 }} each = ₱{{ item.subtotal|floatformat:2 }}</li>
+{% endfor %}
+</ul>
+
+<p>The funds have been added to your wallet balance.</p>
+
+<p>You can view the full order details here: <a href="{{ order_url }}">{{ order_url }}</a></p>
+
+<p>Please arrange for delivery with the buyer.</p>
+
+<p>Thanks for selling with us!<br>
+The Ukay Team</p>

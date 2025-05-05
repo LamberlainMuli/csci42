@@ -10,3 +10,8 @@ django-crispy-forms
 xendit-python
 python-dateutil
 requests
+gunicorn
+psycopg2-binary
+sib-api-v3-sdk
+google-generativeai
+google-genai

@@ -1,0 +1,143 @@
+{# templates/chat/chat_room.html #}
+{% extends 'base.html' %}
+{% load static humanize %}
+
+{% block title %}Chat with {{ other_participant.username }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .chat-container {
+        height: calc(100vh - 200px); /* Adjust based on header/footer height */
+        display: flex;
+        flex-direction: column;
+        background-color: #f8f9fa; /* Light background for chat area */
+        border-radius: 8px;
+        overflow: hidden; /* Contain children */
+        border: 1px solid #dee2e6;
+    }
+    .chat-header {
+         background-color: #e9ecef; /* Slightly darker header */
+         padding: 0.75rem 1rem;
+         border-bottom: 1px solid #dee2e6;
+         display: flex;
+         align-items: center;
+    }
+     .chat-header img {
+         width: 35px; height: 35px; object-fit: cover;
+     }
+    .chat-messages {
+        flex-grow: 1;
+        overflow-y: auto;
+        padding: 1rem;
+        display: flex;
+        flex-direction: column; /* Stack messages */
+    }
+    .message {
+        margin-bottom: 0.75rem;
+        max-width: 75%;
+        padding: 0.5rem 0.8rem;
+        border-radius: 1rem;
+        word-wrap: break-word; /* Break long words */
+    }
+    .message-sent {
+        background-color: #dcf8c6; /* WhatsApp-like sent color */
+        align-self: flex-end; /* Align to right */
+        border-bottom-right-radius: 0.25rem; /* Flatten corner */
+    }
+    .message-received {
+         background-color: #ffffff; /* White for received */
+         align-self: flex-start; /* Align to left */
+         border: 1px solid #eee;
+         border-bottom-left-radius: 0.25rem; /* Flatten corner */
+    }
+    .message-meta {
+         font-size: 0.7rem;
+         color: #6c757d;
+         text-align: right;
+         margin-top: 0.25rem;
+    }
+     .message-received .message-meta {
+         text-align: left;
+     }
+    .chat-input-area {
+        padding: 0.75rem 1rem;
+        border-top: 1px solid #dee2e6;
+        background-color: #f1f1f1; /* Input area background */
+    }
+     .chat-input-area textarea {
+         resize: none; /* Disable textarea resize */
+     }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="chat-container shadow-sm">
+        {# Chat Header #}
+        <div class="chat-header">
+            <a href="{% url 'user:public_profile' other_participant.username %}" class="d-flex align-items-center text-decoration-none text-dark">
+                 <img src="{{ other_participant.profile.get_picture_url }}" alt="{{ other_participant.username }}" class="rounded-circle me-2">
+                <h5 class="mb-0">{{ other_participant.username }}</h5>
+            </a>
+             {# Link back to chat list #}
+             <a href="{% url 'chat:chat_list' %}" class="ms-auto btn btn-sm btn-outline-secondary" title="Back to Chat List">
+                 <i class="fas fa-arrow-left"></i> Back
+             </a>
+        </div>
+
+        {# Messages Area #}
+        <div class="chat-messages" id="chat-messages-area">
+            {% for message in chat_messages %}
+            <div class="message {% if message.sender == request.user %}message-sent{% else %}message-received{% endif %}">
+                <div>{{ message.content|linebreaksbr }}</div>
+                <div class="message-meta">
+                    {% if message.sender == request.user %}You{% else %}{{ message.sender.username }}{% endif %} -
+                    <span title="{{ message.timestamp|date:'Y-m-d H:i:s' }}">{{ message.timestamp|naturaltime }}</span>
+                    {# Add read status later if needed #}
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-center text-muted mt-auto mb-auto">No messages yet. Start the conversation!</p>
+            {% endfor %}
+        </div>
+
+        {# Input Area #}
+        <div class="chat-input-area">
+            <form method="post" action="{% url 'chat:chat_room' room_id=chat_room.id %}" class="d-flex gap-2">
+                {% csrf_token %}
+                <div class="flex-grow-1">
+                     {{ form.content }} {# Render textarea widget #}
+                 </div>
+                 <button type="submit" class="btn btn-primary">
+                     <i class="fas fa-paper-plane"></i> Send
+                 </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Auto-scroll to the bottom of the chat messages
+    const chatMessagesArea = document.getElementById('chat-messages-area');
+    if (chatMessagesArea) {
+        chatMessagesArea.scrollTop = chatMessagesArea.scrollHeight;
+    }
+
+    // Optional: Focus the input field on load
+    const messageInput = document.querySelector('#chat-input-area textarea');
+    if (messageInput) {
+         // messageInput.focus(); // Can be annoying, uncomment if desired
+    }
+
+    // Optional: Submit on Enter, new line on Shift+Enter
+    messageInput?.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault(); // Prevent default Enter behavior (new line)
+            // Find the form and submit it
+            this.closest('form').submit();
+        }
+    });
+</script>
+{% endblock %}

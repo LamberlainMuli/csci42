@@ -5,91 +5,221 @@
     {% progressive_web_app_meta %}
     <link rel="manifest" href="{% url 'manifest' %}">
     <head>
-        <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Ukay</title>
-        <meta name="description" content="Ukay - Your go-to platform for all your needs.">
-        <meta name="keywords" content="Ukay, platform, needs, services">
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+        <title>Ukay</title>
+        <meta name="description" content="Ukay - Your go-to platform for pre-loved fashion.">
+        <meta name="keywords" content="Ukay, thrift, pre-loved, fashion, marketplace, closet">
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
         <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    </head>
-    <body class="content-body">
-        <nav class="navbar navbar-light bg-light fixed-bottom d-md-none p-0"> <div class="container-fluid">
-                <ul class="navbar-nav w-100 flex-row justify-content-around"> <li class="nav-item text-center">
-                        <a class="nav-link d-flex flex-column align-items-center px-2 py-1" href="{% url 'marketplace:home' %}">
-                            <i class="fas fa-home"></i>
-                            <span class="nav-text-mobile">Home</span>
-                        </a>
-                    </li>
-                    {% if user.is_authenticated %}
-                    <li class="nav-item text-center">
-                        <a class="nav-link d-flex flex-column align-items-center px-2 py-1" href="{% url 'user:profile' %}">
-                            <i class="fas fa-user"></i>
-                            <span class="nav-text-mobile">Profile</span>
-                        </a>
-                    </li>
-                    <li class="nav-item text-center">
-                        <a class="nav-link d-flex flex-column align-items-center px-2 py-1" href="{% url 'cart:cart_list' %}">
-                            <i class="fas fa-shopping-cart"></i>
-                            <span class="nav-text-mobile">Cart</span>
-                        </a>
-                    </li>
-                    <li class="nav-item text-center">
-                        <a class="nav-link d-flex flex-column align-items-center px-2 py-1" href="{% url 'cart:saved_list' %}">
-                            <i class="far fa-heart"></i>
-                            <span class="nav-text-mobile">Saved</span>
-                        </a>
-                    </li>
-                     <li class="nav-item text-center">
-                        <a class="nav-link d-flex flex-column align-items-center px-2 py-1" href="{% url 'marketplace:my-closet' %}">
-                            <i class="fas fa-warehouse"></i> <span class="nav-text-mobile">Closet</span>
-                        </a>
-                    </li>
-                    <li class="nav-item text-center">
-                        <a class="nav-link d-flex flex-column align-items-center px-2 py-1" href="{% url 'mix_and_match:create_outfit' %}">
-                            <i class="fas fa-puzzle-piece"></i>
-                             <span class="nav-text-mobile">Mix</span> </a>
-                    </li>
-                    {% else %}
-                    <li class="nav-item text-center">
-                        <a class="nav-link d-flex flex-column align-items-center px-2 py-1" href="{% url 'user:login' %}">
-                            <i class="fas fa-sign-in-alt"></i>
-                            <span class="nav-text-mobile">Login</span>
-                        </a>
-                    </li>
-                    {% endif %}
-                </ul>
-            </div>
-        </nav>
+        {% block extra_head %}{% endblock %}
+        <style>
+            /* Style for notification badges (Desktop Navbar) */
+            .navbar-nav .nav-link .badge { /* Be more specific for desktop */
+                font-size: 0.6em;  /* Slightly smaller */
+                padding: 0.25em 0.45em; /* Adjust padding */
+                position: relative;
+                top: -0.7em; /* Adjust vertical position */
+                left: -0.1em; /* Adjust horizontal overlap */
+                line-height: 1; /* Ensure text centers */
+            }
 
-        <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top d-none d-md-block">
+            /* Style for notification badges (Mobile Navbar) */
+            .mobile-nav-item .nav-link { /* Ensure the parent link is relative */
+               position: relative;
+               display: inline-block; /* Needed for proper badge positioning */
+               padding: 0.25rem; /* Adjust overall link padding if needed */
+            }
+            .mobile-nav-item .badge {
+                position: absolute; /* Position relative to the icon container (<a>) */
+                top: 0;
+                right: 0;
+                font-size: 0.6rem; /* Make badge font smaller */
+                line-height: 1;    /* Center number vertically */
+                padding: 0.15rem 0.35rem; /* Reduce padding */
+                min-width: 16px; /* Ensure minimum width for circle */
+                height: 16px;    /* Ensure minimum height for circle */
+                display: inline-flex; /* Use flex to center content */
+                align-items: center;
+                justify-content: center;
+                transform: translate(35%, -35%); /* Fine-tune position (adjust percentages) */
+                /* Optional: Add slight border */
+                /* border: 1px solid white; */
+            }
+            .mobile-nav-item .nav-text-mobile {
+                font-size: 0.7rem; /* Ensure text size allows space */
+                margin-top: 2px;
+            }
+        </style>
+    </head>
+    <body>
+
+        <nav class="navbar navbar-expand-lg navbar-light fixed-top d-none d-md-block navbar-dark-custom" style="background-color: #2c2c47; padding-top: 10px; padding-bottom: 10px; border-bottom: 1px solid #ddd;">
             <div class="container-fluid">
-                <a class="navbar-brand" href="{% url 'marketplace:home' %}">Ukay</a>
+                <a class="navbar-brand" href="{% url 'marketplace:home' %}">
+                    <img src="{% static 'images/logo-500x500.png' %}" alt="Ukay Logo" height="40" class="d-inline-block align-text-top">
+                </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDesktop" aria-controls="navbarNavDesktop" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="navbarNavDesktop">
-                    <ul class="navbar-nav ms-auto">
-                        <li class="nav-item"><a class="nav-link" href="{% url 'marketplace:home' %}"><i class="fas fa-home"></i> Home</a></li>
+                    <form class="d-flex ms-auto me-3 my-2 my-lg-0" method="GET" action="{% url 'marketplace:home' %}" role="search">
+                        <input class="form-control me-2" type="search" name="q" placeholder="Search items..." aria-label="Search" value="{{ request.GET.q }}">
+                        <button class="btn btn-outline-light" type="submit"><i class="fas fa-search"></i></button>
+                    </form>
+                    <ul class="navbar-nav">
+                        <li class="nav-item"><a class="nav-link {% if request.resolver_match.view_name == 'marketplace:home' %}active{% endif %}" href="{% url 'marketplace:home' %}"><i class="fas fa-store"></i> Marketplace</a></li>
+                         <li class="nav-item"><a class="nav-link {% if request.resolver_match.view_name == 'mix_and_match:create_outfit' %}active{% endif %}" href="{% url 'mix_and_match:create_outfit' %}"><i class="fas fa-puzzle-piece"></i> Mix & Match</a></li>
                         {% if user.is_authenticated %}
-                            <li class="nav-item"><a class="nav-link" href="{% url 'user:profile' %}"><i class="fas fa-user"></i> Profile</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{% url 'cart:cart_list' %}"><i class="fas fa-shopping-cart"></i> Cart</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{% url 'cart:saved_list' %}"><i class="far fa-heart"></i> Saved</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{% url 'marketplace:my-closet' %}"><i class="fas fa-warehouse"></i> My Closet</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{% url 'mix_and_match:create_outfit' %}"><i class="fas fa-puzzle-piece"></i> Mix and Match</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{% url 'dashboard' %}"><i class="far fa-heart"></i> Dashboard</a></li>
-                            <li class="nav-item"><a class="nav-link" href="{% url 'user:logout' %}"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+                            <li class="nav-item"><a class="nav-link {% if request.resolver_match.view_name == 'cart:saved_list' %}active{% endif %}" href="{% url 'cart:saved_list' %}"><i class="far fa-heart"></i> Saved</a></li>
+                            <li class="nav-item"><a class="nav-link {% if request.resolver_match.view_name == 'cart:cart_list' %}active{% endif %}" href="{% url 'cart:cart_list' %}"><i class="fas fa-shopping-cart"></i> Cart</a></li>
+                            <li class="nav-item">
+                                <a class="nav-link {% if request.resolver_match.namespace == 'chat' %}active{% endif %}" href="{% url 'chat:chat_list' %}">
+                                    <i class="fas fa-comments"></i> Chats
+                                    {% if unread_chat_count > 0 %}
+                                        <span class="badge rounded-pill bg-danger">{{ unread_chat_count }}</span>
+                                    {% endif %}
+                                </a>
+                            </li>
+                             <li class="nav-item"><a class="nav-link {% if request.resolver_match.view_name == 'marketplace:my-closet' %}active{% endif %}" href="{% url 'marketplace:my-closet' %}"><i class="fas fa-warehouse"></i> My Closet</a></li>
+                              <li class="nav-item"><a class="nav-link {% if request.resolver_match.view_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard:dashboard' %}"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                            <li class="nav-item dropdown">
+                               <a class="nav-link dropdown-toggle {% if request.resolver_match.view_name == 'user:profile' %}active{% endif %}" href="#" id="navbarDropdownUserLink" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                   <i class="fas fa-user-circle"></i> {{ user.username }}
+                               </a>
+                               <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownUserLink">
+                                   <li><a class="dropdown-item" href="{% url 'user:profile' %}"><i class="fas fa-user-edit fa-fw me-2"></i>Profile</a></li>
+                                   <li><a class="dropdown-item" href="{% url 'dashboard:all_transactions' %}"><i class="fas fa-wallet fa-fw me-2"></i>Wallet</a></li>
+                                   <li><hr class="dropdown-divider"></li>
+                                   <li><a class="dropdown-item" href="{% url 'user:logout' %}"><i class="fas fa-sign-out-alt fa-fw me-2"></i>Logout</a></li>
+                               </ul>
+                           </li>
                         {% else %}
                             <li class="nav-item"><a class="nav-link" href="{% url 'user:login' %}"><i class="fas fa-sign-in-alt"></i> Login</a></li>
+                            <li class="nav-item"><a class="nav-link btn btn-sm btn-primary text-white ms-2" href="{% url 'user:register' %}">Sign Up</a></li>
                         {% endif %}
                     </ul>
                 </div>
             </div>
         </nav>
 
-        <div class="container content">
-            {% block content %}{% endblock %}
+        <div class="container content-container">
+            {% if messages %}
+                <div class="mt-3">
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+                </div>
+            {% endif %}
+
+            {% block content %}
+            {% endblock %}
         </div>
 
+        <nav class="navbar navbar-light bg-light fixed-bottom d-md-none border-top mobile-bottom-nav">
+            <div class="container-fluid px-0">
+                 {# Layout for 7 items (3 + Center + 3) #}
+                <ul class="navbar-nav w-100 flex-row justify-content-around align-items-center">
+                     {# 1. Explore #}
+                    <li class="nav-item text-center mobile-nav-item">
+                        <a class="nav-link d-flex flex-column align-items-center px-1 py-1 {% if request.resolver_match.view_name == 'marketplace:home' %}active{% endif %}" href="{% url 'marketplace:home' %}">
+                            <i class="fas fa-store fa-lg"></i>
+                            {# Text might need to be removed via CSS #}
+                            <span class="nav-text-mobile">Explore</span>
+                        </a>
+                    </li>
+                     {# 2. Mix #}
+                    <li class="nav-item text-center mobile-nav-item">
+                        <a class="nav-link d-flex flex-column align-items-center px-1 py-1 {% if request.resolver_match.namespace == 'mix_and_match' %}active{% endif %}" href="{% url 'mix_and_match:create_outfit' %}">
+                            <i class="fas fa-puzzle-piece fa-lg"></i>
+                            <span class="nav-text-mobile">Mix</span>
+                        </a>
+                    </li>
+                     {# 3. Closet #}
+                    <li class="nav-item text-center mobile-nav-item">
+                        <a class="nav-link d-flex flex-column align-items-center px-1 py-1 {% if request.resolver_match.view_name == 'marketplace:my-closet' %}active{% endif %}" href="{% if user.is_authenticated %}{% url 'marketplace:my-closet' %}{% else %}{% url 'user:login' %}{% endif %}">
+                            <i class="fas fa-warehouse fa-lg"></i>
+                            <span class="nav-text-mobile">Closet</span>
+                        </a>
+                    </li>
+                     {# 4. Add Button Container #}
+                    <li class="nav-item text-center add-button-container">
+                        <a class="nav-link add-button" href="{% url 'marketplace:product-create' %}?is_public=false" aria-label="Add New Item">
+                            <i class="fas fa-plus"></i>
+                        </a>
+                    </li>
+                     {# --- 5. Chats Tab (Mobile - Replaces Saved) --- #}
+                     <li class="nav-item text-center mobile-nav-item">
+                        <a class="nav-link d-flex flex-column align-items-center px-1 py-1 {% if request.resolver_match.namespace == 'chat' %}active{% endif %}" href="{% if user.is_authenticated %}{% url 'chat:chat_list' %}{% else %}{% url 'user:login' %}{% endif %}">
+                            <i class="fas fa-comments fa-lg"></i>
+                            {% if user.is_authenticated and unread_chat_count > 0 %}
+                               <span class="badge rounded-pill bg-danger">{{ unread_chat_count }}</span>
+                            {% endif %}
+                            <span class="nav-text-mobile">Chats</span>
+                        </a>
+                    </li>
+                     {# 6. Cart #}
+                    <li class="nav-item text-center mobile-nav-item">
+                        <a class="nav-link d-flex flex-column align-items-center px-1 py-1 {% if request.resolver_match.view_name == 'cart:cart_list' %}active{% endif %}" href="{% if user.is_authenticated %}{% url 'cart:cart_list' %}{% else %}{% url 'user:login' %}{% endif %}">
+                            <i class="fas fa-shopping-cart fa-lg"></i>
+                            <span class="nav-text-mobile">Cart</span>
+                        </a>
+                    </li>
+                     {# 7. Me #}
+                    <li class="nav-item text-center mobile-nav-item">
+                        <a class="nav-link d-flex flex-column align-items-center px-1 py-1 {% if request.resolver_match.view_name == 'user:profile' or request.resolver_match.namespace == 'user' %}active{% endif %}" href="{% if user.is_authenticated %}{% url 'user:profile' %}{% else %}{% url 'user:login' %}{% endif %}">
+                            <i class="fas fa-user-circle fa-lg"></i>
+                            <span class="nav-text-mobile">Me</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <footer class="footer mt-auto py-3 bg-dark text-light d-none d-md-block"> <div class="container">
+                 <div class="row">
+                     <div class="col-md-4 mb-3">
+                         <h5>Ukay</h5>
+                         <p class="text-muted small">Discover unique pre-loved fashion items. Buy, sell, and manage your virtual closet.</p>
+                     </div>
+                     <div class="col-md-2 mb-3">
+                         <h5>Quick Links</h5>
+                         <ul class="list-unstyled small">
+                             <li><a href="{% url 'marketplace:home' %}" class="text-light">Marketplace</a></li>
+                             {% if user.is_authenticated %}
+                             <li><a href="{% url 'marketplace:my-closet' %}" class="text-light">My Closet</a></li>
+                             <li><a href="{% url 'mix_and_match:create_outfit' %}" class="text-light">Mix & Match</a></li>
+                              <li><a href="{% url 'dashboard:dashboard' %}" class="text-light">Dashboard</a></li>
+                             {% endif %}
+                         </ul>
+                     </div>
+                     <div class="col-md-3 mb-3">
+                         <h5>Support</h5>
+                         <ul class="list-unstyled small">
+                             <li><a href="{% url 'core:help-centre' %}" class="text-light">Help Centre (FAQs)</a></li>
+                             <li><a href="{% url 'core:contact-us' %}" class="text-light">Contact Us</a></li>
+                         </ul>
+                     </div>
+                     <div class="col-md-3 mb-3">
+                         <h5>Legal</h5>
+                         <ul class="list-unstyled small">
+                             <li><a href="{% url 'core:privacy-policy' %}" class="text-light">Privacy Policy</a></li>
+                             <li><a href="{% url 'core:terms-service' %}" class="text-light">Terms of Service</a></li>
+                         </ul>
+                     </div>
+                 </div>
+                 <hr class="text-muted">
+                 <div class="text-center text-muted small">
+                     &copy; 2025 Ukay. All Rights Reserved. Quezon City, Philippines.
+                 </div>
+             </div>
+         </footer>
+
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        {% block extra_scripts %}{% endblock %}
     </body>
 </html>

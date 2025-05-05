@@ -1,0 +1,252 @@
+{# templates/marketplace/product_image_edit.html #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Edit Product Image - {{ product.title }}{% endblock %}
+
+{% block content %}
+{# --- STYLESHEETS --- #}
+<link rel="stylesheet" href="https://uicdn.toast.com/tui-color-picker/v2.2.7/tui-color-picker.min.css" />
+<link rel="stylesheet" href="https://uicdn.toast.com/tui-image-editor/latest/tui-image-editor.min.css" />
+<style>
+    body, .content-container { background-color: {{ brand_colors.body_bg|default:'#fffef7' }}; }
+    #tui-image-editor-container {
+        width: 100%; height: 75vh; min-height: 500px; max-height: 85vh;
+        max-width: 1200px; margin: 0 auto; /* Centering */
+        border: 1px solid #555; /* Darker border from other template */
+        background-color: #1e1e1e; /* Dark BG from other template */
+        position: relative; overflow: hidden; /* Hide canvas overflow */
+    }
+    #tui-image-editor-container:-webkit-full-screen { height: 100%; width: 100%; max-width: none; max-height: none; margin: 0; border: none; background-color: #1e1e1e; display: block !important; }
+    #tui-image-editor-container:-moz-full-screen { height: 100%; width: 100%; max-width: none; max-height: none; margin: 0; border: none; background-color: #1e1e1e; display: block !important; }
+    #tui-image-editor-container:-ms-fullscreen { height: 100%; width: 100%; max-width: none; max-height: none; margin: 0; border: none; background-color: #1e1e1e; display: block !important; }
+    #tui-image-editor-container:fullscreen { height: 100%; width: 100%; max-width: none; max-height: none; margin: 0; border: none; background-color: #1e1e1e; display: block !important; }
+    #tui-image-editor-container:fullscreen .tui-image-editor-wrap { height: 100% !important; }
+    .tui-image-editor-header-logo { display: none !important; }
+    .tui-image-editor-header-buttons .tui-image-editor-download-btn { display: none; }
+    .editor-top-controls { text-align: right; margin-bottom: 0.5rem; max-width: 1200px; margin-left: auto; margin-right: auto;}
+    .save-button-container { text-align: center; margin: 20px 0; }
+    .editor-page-title { color: #e0e0e0; } /* Adjusted for darker background */
+    .editor-page-description { color: #b0b0b0; } /* Adjusted for darker background */
+
+    #mobile-editor-placeholder { display: none; text-align: center; padding: 40px 20px; border: 1px dashed #777; border-radius: 5px; background-color: #2a2a2a; margin: 1rem auto; max-width: 600px; color: #ccc; }
+    @media (max-width: 767.98px) {
+        #tui-image-editor-container { display: none; }
+        #mobile-editor-placeholder { display: block; }
+        #desktop-fullscreen-btn { display: none; }
+    }
+    /* Ensure editor container is visible when fullscreen on mobile */
+     #tui-image-editor-container:fullscreen { display: block !important; }
+</style>
+{# --- END STYLESHEETS --- #}
+
+<div class="container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="editor-page-title"><i class="fas fa-edit"></i> Edit Image for "{{ product.title }}"</h2>
+        <a href="{% url 'marketplace:product-update' product.pk %}" class="btn btn-sm btn-outline-secondary" title="Cancel Edit">
+            <i class="fas fa-times"></i> Cancel
+        </a>
+    </div>
+    <p class="editor-page-description">Use the tools below to refine your image. Click "Save Changes" when done.</p>
+    <hr style="border-color: #444;"> {# Darker hr for dark theme #}
+
+    <div id="mobile-editor-placeholder">
+        <p><i class="fas fa-mobile-alt fa-2x mb-2"></i></p>
+        <p>Editing works best in fullscreen landscape mode on mobile.</p>
+        <button id="mobileFullscreenBtn" class="btn btn-primary mt-2">
+            <i class="fas fa-expand"></i> Launch Fullscreen Editor
+        </button>
+    </div>
+
+    <div class="editor-top-controls">
+        <button id="desktop-fullscreen-btn" class="btn btn-sm btn-outline-secondary" title="Toggle Fullscreen">
+            <i class="fas fa-expand"></i> Fullscreen
+        </button>
+    </div>
+
+    <div id="tui-image-editor-container"></div>
+
+    <div class="save-button-container">
+        <button id="saveBtn" class="btn btn-success btn-lg me-2">
+            <i class="fas fa-save"></i> Save Changes
+        </button>
+         <a href="{% url 'marketplace:product-update' product.pk %}" class="btn btn-secondary">Cancel</a>
+    </div>
+
+    <form id="editForm" method="POST" action="{% url 'marketplace:edit_existing_product_image' product.pk %}" style="display: none;">
+        {% csrf_token %}
+        <input type="hidden" name="edited_image_data" id="editedImageDataInput">
+    </form>
+</div>
+
+
+{# --- SCRIPTS --- #}
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/4.4.0/fabric.js"></script>
+<script type="text/javascript" src="https://uicdn.toast.com/tui.code-snippet/v1.5.2/tui-code-snippet.min.js"></script>
+<script type="text/javascript" src="https://uicdn.toast.com/tui-color-picker/v2.2.7/tui-color-picker.min.js"></script>
+<script type="text/javascript" src="https://uicdn.toast.com/tui-image-editor/latest/tui-image-editor.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const imageEditorContainer = document.querySelector('#tui-image-editor-container');
+        const saveButton = document.getElementById('saveBtn');
+        const hiddenInput = document.getElementById('editedImageDataInput');
+        const editForm = document.getElementById('editForm');
+        const fullscreenButtonDesktop = document.getElementById('desktop-fullscreen-btn');
+        const fullscreenButtonMobile = document.getElementById('mobileFullscreenBtn');
+        const imageUrl = "{{ image_url }}?v=" + new Date().getTime(); // Cache buster
+
+        if (!imageEditorContainer || !saveButton || !hiddenInput || !editForm || !fullscreenButtonMobile || !fullscreenButtonDesktop) {
+            console.error("Marketplace Editor: Essential HTML components missing!");
+            if (window.innerWidth > 767) { alert("Error initializing editor: HTML elements missing."); }
+            return;
+        }
+
+        const darkTheme = {
+            'common.bi.image': '', 'common.backgroundImage': 'none', 'common.backgroundColor': '#1e1e1e', 'common.border': '0px',
+            'header.backgroundImage': 'none', 'header.backgroundColor': 'transparent', 'header.border': '0px',
+            'loadButton.display': 'none', 'downloadButton.display': 'none', 'menu.backgroundColor': '#1e1e1e',
+            'submenu.backgroundColor': '#1e1e1e', 'submenu.partition.color': '#3c3c3c', 'menu.normalIcon.color': '#8a8a8a',
+            'menu.activeIcon.color': '#fff', 'menu.disabledIcon.color': '#434343', 'menu.hoverIcon.color': '#e9e9e9',
+            'submenu.normalIcon.color': '#8a8a8a', 'submenu.activeIcon.color': '#fff', 'submenu.normalLabel.color': '#8a8a8a',
+            'submenu.normalLabel.fontWeight': 'lighter', 'submenu.activeLabel.color': '#fff', 'submenu.activeLabel.fontWeight': 'lighter',
+            'checkbox.border': '1px solid #ccc', 'checkbox.backgroundColor': '#fff', 'range.pointer.color': '#fff',
+            'range.bar.color': '#666', 'range.subbar.color': '#d1d1d1', 'range.disabledPointer.color': '#414141',
+            'range.disabledBar.color': '#282828', 'range.disabledSubbar.color': '#414141', 'range.value.color': '#fff',
+            'range.value.fontWeight': 'lighter', 'range.value.fontSize': '11px', 'range.value.border': '1px solid #353535',
+            'range.value.backgroundColor': '#151515', 'range.title.color': '#fff', 'range.title.fontWeight': 'lighter',
+            'colorpicker.button.border': '1px solid #1e1e1e', 'colorpicker.title.color': '#fff',
+        };
+
+        let instance = null;
+        let currentScale = 1.0;
+
+        console.log("Marketplace Editor: Initializing TUI Image Editor...");
+        console.log("Marketplace Editor: Image URL:", imageUrl);
+        if (!"{{ image_url }}") { // Check if image_url is empty from context
+            console.error("Marketplace Editor: 'image_url' is empty. Cannot load image.");
+            alert("Error: Image URL is missing. Cannot initialize editor.");
+            imageEditorContainer.innerHTML = '<p class="text-danger text-center mt-5">Could not load image editor: Image URL missing.</p>';
+            return;
+        }
+
+        try {
+            instance = new tui.ImageEditor(imageEditorContainer, {
+                includeUI: {
+                    loadImage: {
+                        path: imageUrl,
+                        name: 'ProductImage-{{ product.id|default:"0" }}', // Added default filter
+                        crossOrigin: 'anonymous' // Important for toDataURL with external images
+                    },
+                    theme: darkTheme, // Using the same dark theme as the working version
+                    initMenu: 'filter',
+                    menuBarPosition: 'bottom',
+                    menu: ['crop', 'flip', 'rotate', 'draw', 'shape', 'icon', 'text', 'mask', 'filter'], // Comprehensive menu
+                },
+                selectionStyle: { cornerSize: 30, rotatingPointOffset: 70 } // Matched to working version
+            });
+
+            console.log("Marketplace Editor: TUI Image Editor instance created:", instance);
+
+            const canvas = instance._graphics.getCanvas();
+
+            const setZoom = (newScale, centerPt = null) => {
+                // ... (keep your existing setZoom logic if needed, or remove if not using custom zoom buttons)
+            };
+
+            const resizeEditorUI = () => {
+                setTimeout(() => {
+                    if (instance && instance.ui && typeof instance.ui.resizeEditor === 'function') {
+                        instance.ui.resizeEditor();
+                        console.log("Marketplace Editor: resizeEditor() called.");
+                    } else {
+                        console.warn("Marketplace Editor: resizeEditor function not available on UI.");
+                    }
+                }, 150); // Slight delay
+            };
+            window.addEventListener('resize', resizeEditorUI);
+
+            function requestEnterFullscreen() {
+                imageEditorContainer.style.display = 'block';
+                const el = imageEditorContainer;
+                if (el.requestFullscreen) el.requestFullscreen();
+                else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+                else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+                else if (el.msRequestFullscreen) el.msRequestFullscreen();
+            }
+
+            function exitFullscreen() {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+                else if (document.msExitFullscreen) document.msExitFullscreen();
+            }
+
+            function toggleFullscreen() {
+                if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement && !document.msFullscreenElement) {
+                    requestEnterFullscreen();
+                } else {
+                    exitFullscreen();
+                }
+            }
+
+            function attemptLockLandscape() {
+                try {
+                    if (screen.orientation && typeof screen.orientation.lock === 'function') {
+                        screen.orientation.lock('landscape').catch(err => console.warn('Marketplace Editor: Orientation lock failed:', err));
+                    } else { console.warn('Marketplace Editor: Screen Orientation lock API not supported.'); }
+                } catch (err) { console.warn('Marketplace Editor: Error locking orientation:', err); }
+            }
+
+            fullscreenButtonDesktop.addEventListener('click', toggleFullscreen);
+            fullscreenButtonMobile.addEventListener('click', () => {
+                requestEnterFullscreen();
+                setTimeout(attemptLockLandscape, 50);
+            });
+
+            ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(event =>
+                document.addEventListener(event, resizeEditorUI, false)
+            );
+
+            saveButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                saveButton.disabled = true;
+                saveButton.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+                try {
+                    const base64String = instance.toDataURL({ format: 'png' });
+                    if (base64String) {
+                        hiddenInput.value = base64String;
+                        editForm.submit();
+                    } else {
+                        throw new Error("Editor returned empty data.");
+                    }
+                } catch (error) {
+                    console.error("Marketplace Editor: Save Error:", error);
+                    alert("Error saving image: " + error.message);
+                    saveButton.disabled = false;
+                    saveButton.innerHTML = '<i class="fas fa-save"></i> Save Changes';
+                }
+            });
+
+            // Call resize initially after a short delay to ensure layout is stable
+            setTimeout(resizeEditorUI, 250);
+
+            // You can add an event listener for image load success if needed for debugging
+            instance.on('loadImage', function(imageProperties) {
+                console.log('Marketplace Editor: Image loaded successfully into editor.', imageProperties);
+                // instance.setDrawingShape('rect'); // Example: If you want to set something after load
+            });
+            instance.on('errorLoadImage', function(error) {
+                 console.error('Marketplace Editor: Error reported by editor during image load:', error);
+                 alert('TUI Editor reported an error loading the image. Check console.');
+            });
+
+
+        } catch (error) {
+            console.error("Marketplace Editor: Error initializing TUI Image Editor:", error);
+            alert("Failed to initialize image editor. See console for details.");
+            imageEditorContainer.innerHTML = '<p class="text-danger text-center mt-5">Could not load image editor. An initialization error occurred.</p>';
+        }
+    });
+</script>
+{% endblock %}

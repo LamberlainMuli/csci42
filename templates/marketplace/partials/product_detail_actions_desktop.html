@@ -1,0 +1,30 @@
+{# marketplace/partials/product_detail_actions_desktop.html #}
+{% load static %}
+
+{# Use 'product' passed from include tag #}
+{% if is_seller %}
+     <div class="d-grid gap-2">
+        {% if not product.is_public %}
+            <a href="{% url 'marketplace:product-update' product.pk %}?make_public=true" class="btn btn-success"><i class="fas fa-store me-1"></i> List this Item Publicly</a>
+            <hr>
+        {% endif %}
+        <a href="{% url 'marketplace:product-update' product.pk %}" class="btn btn-brand-secondary"><i class="fas fa-edit me-1"></i> Edit Listing Details</a>
+        <a href="{% url 'marketplace:replace_product_image' product.pk %}" class="btn btn-outline-secondary"><i class="fas fa-image me-1"></i> Replace Image</a>
+        <a href="{% url 'marketplace:product-delete' product.pk %}" class="btn btn-outline-danger mt-2"><i class="fas fa-trash me-1"></i> Delete Listing</a>
+    </div>
+{% elif can_purchase %}
+     <div class="d-grid gap-2">
+        <a href="{% url 'cart:add_to_cart' product.id %}" class="btn btn-brand-primary"><i class="fas fa-shopping-cart me-1"></i> Add to Cart</a>
+        <div class="btn-group w-100">
+             <a href="{% url 'cart:add_to_saved' product.id %}" class="btn btn-outline-secondary w-50"><i class="far fa-heart me-1"></i> Save</a>
+             <a href="{% url 'chat:start_chat' seller_id=product.seller.id %}" class="btn btn-outline-info w-50"><i class="fas fa-comments me-1"></i> Chat</a>
+        </div>
+    </div>
+{% elif not product.is_public %}
+     <p class="text-muted fst-italic">This is a private item in your closet.</p>
+{% else %}
+      <div class="d-grid gap-2">
+          <button class="btn btn-secondary" disabled>{% if product.is_sold %}Sold Out{% else %}Out of Stock{% endif %}</button>
+           <a href="{% url 'cart:add_to_saved' product.id %}" class="btn btn-outline-secondary"><i class="far fa-heart me-1"></i> Save for Later</a>
+      </div>
+{% endif %}

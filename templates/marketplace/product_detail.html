@@ -1,59 +1,217 @@
 {% extends 'base.html' %}
-{% load static %}
-{% block content %}
-<main class="container mt-4">
-  <article class="product-details">
-    <header>
-      <h1 class="product-title">{{ product.title }}</h1>
-    </header>
-    <section class="mb-3">
-      {% if primary_image %}
-        <img src="{{ primary_image.image.url }}" alt="{{ product.title }}" class="img-fluid" style="max-width:300px;">
-      {% else %}
-        <p>No image available.</p>
-      {% endif %}
-    </section>
-    <section>
-      <p><strong>Seller:</strong> {{ product.seller.username }}</p>
-      <p><strong>Description:</strong> {{ product.description }}</p>
-      <p><strong>Price:</strong> {{ formatted_price|default:product.price }}</p>
-      <p><strong>Available Quantity:</strong> {{ product.quantity }}</p>
-      <p><strong>Size:</strong> {{ product.size }}</p>
-      <p><strong>Color:</strong> {{ product.color }}</p>
-      <p><strong>Material:</strong> {{ product.material }}</p>
-      <p><strong>Category:</strong> {{ product.get_category_display }}</p>
-      <p><strong>Condition:</strong> {{ product.get_condition_display }}</p>
-      <p><strong>Created At:</strong> {{ product.created_at|date:"M d, Y" }}</p>
-      <p><strong>Updated At:</strong> {{ product.updated_at|date:"M d, Y" }}</p>
-      <p><strong>Status:</strong> {% if product.is_sold %} Sold {% else %} Available {% endif %}</p>
-    </section>
-  </article>
+{% load static humanize %}
 
-  <nav class="product-actions mt-4" aria-label="Product Actions">
-    <a href="{% url 'marketplace:home' %}" class="btn btn-secondary" aria-label="Back to Home">
-      <i class="fas fa-home" aria-hidden="true"></i> Back to Home
-    </a>
-    {% if product.is_public %}
-      {% if not user.is_authenticated or product.seller.id != user.id %}
-        <a href="{% url 'cart:add_to_saved' product.id %}" class="btn btn-outline-secondary" aria-label="Save for later">
-          <i class="fas fa-heart" aria-hidden="true"></i> Save for later
+{% block title %}{{ object.title }} - Ukay{% endblock %}
+
+{% block extra_head %}
+{# Use inline styles defined in the previous step - add any new ones needed #}
+<style>
+    /* Brand background */
+    body, .content-container { background-color: {{ brand_colors.body_bg|default:'#fffef7' }}; }
+
+    /* --- Mobile Header --- */
+    .product-detail-header-mobile { background-color: {{ brand_colors.body_bg|default:'#fffef7' }}; padding: 0.5rem 0.75rem; position: sticky; top: 0; z-index: 1021; border-bottom: 1px solid #eee; }
+    .product-detail-header-mobile .back-button { color: #333; font-size: 1.2rem; text-decoration: none; margin-right: 10px; }
+    .product-detail-header-mobile .header-title { font-size: 1rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* --- Image Carousel --- */
+    #productImageCarousel { border-radius: 0; } /* Edge-to-edge mobile */
+    #productImageCarousel .carousel-item { min-height: 300px; max-height: 65vh; /* Adjusted max height */ display: flex; align-items: center; justify-content: center; background-color: #f0f0f0; }
+    #productImageCarousel .carousel-item img { width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; }
+    #productImageCarousel .carousel-indicators { margin-bottom: 0.5rem; } /* Slight adjustment */
+    #productImageCarousel .carousel-control-prev-icon,
+    #productImageCarousel .carousel-control-next-icon { background-color: rgba(44, 44, 71, 0.7); /* Darker controls using brand navbar color */ border-radius: 50%; }
+
+    /* Hide indicators/controls on mobile (keep for desktop) */
+     @media (max-width: 991.98px) {
+        #productImageCarousel .carousel-indicators,
+        #productImageCarousel .carousel-control-prev,
+        #productImageCarousel .carousel-control-next { display: none; }
+     }
+     @media (min-width: 992px) { /* Desktop */
+         #productImageCarousel { border-radius: 0.375rem; } /* Rounded corners */
+     }
+
+    /* --- Content Sections --- */
+    .product-content-section { padding: 1rem; }
+    .product-info-card { background-color: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); margin-bottom: 1rem; padding: 1rem 1.25rem; }
+    .product-info-card h5 { margin-bottom: 0.75rem; font-weight: 600; color: {{ brand_colors.navbar_bg|default:'#2c2c47' }}; }
+    .details-list dt { font-weight: 500; color: #555; }
+    .details-list dd { margin-bottom: 0.5rem; color: #212529; }
+    .seller-info-card .card-body { padding: 0.75rem 1rem; }
+
+    /* --- Brand Buttons --- */
+    .btn-brand-primary { background-color: {{ brand_colors.primary }}; color: {{ brand_colors.button_text }}; border-color: {{ brand_colors.primary }}; }
+    .btn-brand-primary:hover { background-color: #5a9a5c; color: {{ brand_colors.button_text }}; border-color: #5a9a5c; }
+    .btn-brand-secondary { background-color: {{ brand_colors.secondary }}; color: {{ brand_colors.button_text }}; border-color: {{ brand_colors.secondary }}; }
+    .btn-brand-secondary:hover { background-color: #bf7a8b; color: {{ brand_colors.button_text }}; border-color: #bf7a8b; }
+    /* Add style for outline info button if needed */
+    .btn-outline-info { border-color: {{ brand_colors.accent1|default:'#efaca4' }}; color: {{ brand_colors.accent1|default:'#efaca4' }}; }
+    .btn-outline-info:hover { background-color: {{ brand_colors.accent1|default:'#efaca4' }}; color: #fff; }
+
+
+    /* --- Mobile Action Bar --- */
+    .product-actions-mobile { background-color: rgba(255, 254, 247, 0.95); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); border-top: 1px solid #eee; padding: 0.6rem 0.75rem; z-index: 1035 !important; /* High z-index */ }
+    .product-actions-mobile .btn { font-size: 0.9rem; padding-top: 0.5rem; padding-bottom: 0.5rem; }
+    .product-actions-mobile .btn i { margin-right: 0.3rem; font-size: 1.1rem; vertical-align: middle; }
+    .product-actions-mobile .btn-save { color: #6c757d; flex-grow: 0 !important; flex-shrink: 0; padding: 0.375rem 0.6rem; }
+    .product-actions-mobile .btn-save.saved { color: {{ brand_colors.secondary }}; }
+    .product-actions-mobile .btn-save i { margin-right: 0; }
+
+    /* --- Layout Adjustments --- */
+     @media (max-width: 991.98px) {
+         /* Ensure content scrolls above mobile bars */
+         .content-container { padding-top: 0 !important; padding-bottom: 80px !important; }
+     }
+     @media (min-width: 992px) { /* Desktop */
+          /* Restore padding for desktop fixed navbar */
+          .content-container { padding-top: 70px !important; }
+     }
+
+     .add-button {
+        display:none !important;
+     }
+</style>
+{% endblock %}
+
+
+{% block content %}
+{# Use object directly as passed by DetailView #}
+
+{# Mobile Only Header with Back Button #}
+<div class="d-md-none product-detail-header-mobile">
+    <div class="d-flex align-items-center">
+        {# Link back to marketplace home or use JS history #}
+        {# Using marketplace home might be more reliable than JS history #}
+        <a href="{% url 'marketplace:home' %}" class="back-button" aria-label="Go back">
+             <i class="fas fa-arrow-left"></i>
         </a>
-        <a href="{% url 'cart:add_to_cart' product.id %}" class="btn btn-outline-primary" aria-label="Add to cart">
-          <i class="fas fa-shopping-cart" aria-hidden="true"></i> Add to cart
-        </a>
-      {% endif %}
-    {% endif %}
-    <a href="#" class="btn btn-outline-info" aria-label="Chat">
-      <i class="fas fa-comments" aria-hidden="true"></i> Chat
-    </a>
-    {% if user.is_authenticated and product.seller.id == user.id %}
-      <a href="{% url 'marketplace:product-update' product.pk %}" class="btn btn-warning" aria-label="Edit Product">
-        <i class="fas fa-edit" aria-hidden="true"></i> Edit Product
-      </a>
-      <a href="{% url 'marketplace:replace_product_image' product.pk %}" class="btn btn-secondary" aria-label="Replace Image">
-        <i class="fas fa-image" aria-hidden="true"></i> Replace Image
-      </a>
-    {% endif %}
-  </nav>
-</main>
+        <span class="header-title">{{ object.title|truncatechars:35 }}</span>
+    </div>
+</div>
+
+{# Use row only for desktop layout #}
+<div class="row g-lg-4 justify-content-center"> {# Center columns on desktop #}
+
+    {# --- Image Column / Section (Full width mobile, column desktop) --- #}
+    <div class="col-lg-7">
+        {% if product_images %}
+            <div id="productImageCarousel" class="carousel slide mb-3 mb-lg-0" data-bs-ride="carousel" data-bs-interval="false">
+                <div class="carousel-indicators">
+                    {% for image in product_images %}
+                        <button type="button" data-bs-target="#productImageCarousel" data-bs-slide-to="{{ forloop.counter0 }}" class="{% if forloop.first %}active{% endif %}" aria-current="{% if forloop.first %}true{% else %}false{% endif %}" aria-label="Slide {{ forloop.counter }}"></button>
+                    {% endfor %}
+                </div>
+                <div class="carousel-inner">
+                    {% for image in product_images %}
+                        <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                            <img src="{{ image.image.url }}" class="d-block" alt="{{ object.title }} - Image {{ forloop.counter }}">
+                        </div>
+                    {% empty %}
+                         <div class="carousel-item active">
+                            <img src="{% static 'images/placeholder.png' %}" class="d-block w-100" alt="No images available">
+                        </div>
+                    {% endfor %}
+                </div>
+                {% if product_images|length > 1 %}
+                <button class="carousel-control-prev" type="button" data-bs-target="#productImageCarousel" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Previous</span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#productImageCarousel" data-bs-slide="next">
+                    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                    <span class="visually-hidden">Next</span>
+                </button>
+                {% endif %}
+            </div>
+        {% else %}
+             <div class="text-center border rounded p-5 bg-light mb-3 mb-lg-0">
+                <img src="{% static 'images/placeholder.png' %}" class="img-fluid" style="max-height: 300px;" alt="No image available">
+             </div>
+        {% endif %}
+    </div>{# End Image Column #}
+
+    {# --- Details Column / Section (Full width mobile, column desktop) --- #}
+    <div class="col-lg-5">
+        <div class="product-content-section"> {# Wrap content in a padded section for mobile #}
+            <h1 class="mb-1 h3">{{ object.title }}</h1> {# Slightly smaller heading #}
+
+            <div class="d-flex align-items-center mb-2">
+                <h2 class="h4 mb-0 me-3" style="color: {{ brand_colors.primary }}; font-weight: 600;">{{ formatted_price }}</h2>
+                 {% if object.is_sold %} <span class="badge bg-danger">Sold</span>
+                 {% elif not object.is_public %} <span class="badge bg-secondary">Private</span>
+                 {% elif object.quantity > 0 %} <span class="badge" style="background-color: {{ brand_colors.primary }}; color: {{ brand_colors.button_text }};">Available</span>
+                 {% else %} <span class="badge bg-warning text-dark">Out of Stock</span>
+                 {% endif %}
+            </div>
+
+            <p class="text-muted small mb-3"><i class="far fa-clock me-1"></i>Posted {{ object.created_at|timesince }} ago</p>
+
+            {# Seller Info Card #}
+             <div class="card mb-3 shadow-sm seller-info-card">
+                 <div class="card-body d-flex align-items-center">
+                      {% if seller_profile_pic_url %}
+                          <img src="{{ seller_profile_pic_url }}" alt="{{ object.seller.username }}" class="rounded-circle me-2" width="35" height="35">
+                      {% else %}
+                          <i class="fas fa-user-circle fa-2x text-secondary me-2"></i>
+                      {% endif %}
+                      <div>
+                         <span class="text-muted small d-block" style="line-height: 1.1;">Sold by</span>
+                         {# NEED URL FOR SELLER PROFILE #}
+                         <a href="#" class="text-decoration-none fw-bold">{{ object.seller.username }}</a>
+                      </div>
+                      <div class="ms-auto">
+                           <a href="{%url 'user:public_profile' object.seller.username%}" class="btn btn-sm btn-outline-secondary">View Profile</a>
+                      </div>
+                 </div>
+             </div>
+
+             {# Desktop action buttons #}
+             <div class="d-none d-lg-block mb-3">
+                 {# Include partial, passing object as product #}
+                 {% include 'marketplace/partials/product_detail_actions_desktop.html' with product=object %}
+             </div>
+
+             {# Description Section - Use Bootstrap Collapse for potentially long descriptions #}
+            <div class="product-info-section">
+                <h5 class="mb-0">
+                     <button class="btn btn-link text-start w-100 p-0 text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#descriptionCollapse" aria-expanded="false" aria-controls="descriptionCollapse" style="color: inherit; font-weight: 600; font-size: 1.1rem;">
+                         Description
+                         <i class="fas fa-chevron-down float-end small mt-1"></i>
+                     </button>
+                </h5>
+                 <div class="collapse pt-2" id="descriptionCollapse">
+                    <p class="mb-0" style="white-space: pre-wrap;">{{ object.description|linebreaksbr|default:"No description provided." }}</p>
+                 </div>
+            </div>
+
+             {# Details Section #}
+            <div class="product-info-section">
+                <h5>Details</h5>
+                <dl class="row details-list mb-0">
+                    {% if object.category %} <dt class="col-5">Category</dt><dd class="col-7">{{ object.get_category_display }}</dd> {% endif %}
+                    {% if object.condition %} <dt class="col-5">Condition</dt><dd class="col-7">{{ object.get_condition_display }}</dd> {% endif %}
+                    {% if object.size %} <dt class="col-5">Size</dt><dd class="col-7">{{ object.size }}</dd> {% endif %}
+                    {% if object.color %} <dt class="col-5">Color</dt><dd class="col-7">{{ object.color }}</dd> {% endif %}
+                    {% if object.material %} <dt class="col-5">Material</dt><dd class="col-7">{{ object.material }}</dd> {% endif %}
+                    {% if object.is_public and object.quantity > 0 and not object.is_sold %}<dt class="col-5">Stock</dt><dd class="col-7">{{ object.quantity }} left</dd>{% endif %}
+                </dl>
+             </div>
+
+            <p class="text-muted small text-center mt-3">Listing updated {{ object.updated_at|timesince }} ago.</p>
+        </div>{# End Padding Div #}
+        </div> {# End Details Column #}
+    </div> {# End Row #}
+</div> {# End Container #}
+
+{# --- Sticky Action Bar - Mobile Only --- #}
+<div class="fixed-bottom d-md-none product-actions-mobile">
+     {# Include partial, passing object as product #}
+     {% include 'marketplace/partials/product_detail_actions_mobile.html' with product=object %}
+</div>
+{% endblock %}
+
+
+{% block extra_scripts %}
+{# Add JS if needed for Save button state etc. #}
 {% endblock %}

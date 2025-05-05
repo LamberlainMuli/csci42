@@ -1,221 +1,351 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load marketplace_tags %} {# Make sure you have the querystring tag defined or import it #}
 {% block content %}
 <main class="container mt-4">
-  <!-- Top header with search and create options -->
-  <header class="row search-header bg-light p-3 mb-3" role="banner">
-    {% if user.is_authenticated %}
-    <div class="col-12 col-md-3 mb-2">
-      <p>Welcome, {{ user.username }}!</p>
-      <a href="{% url 'marketplace:product-create' %}" class="btn btn-secondary" aria-label="Create a new product">
-        <i class="fas fa-plus" aria-hidden="true"></i> Create Product
-      </a>
-    </div>
-    {% endif %}
-    <div class="col-12 col-md-6 mb-2">
-      <form method="GET" action="{% url 'marketplace:home' %}" role="search" aria-label="Search Products">
-        <div class="input-group">
-          <input type="text" name="q" placeholder="Search products..." value="{{ current_filters.q }}" class="form-control" aria-label="Search products">
-          <div class="input-group-append">
-            <button type="submit" class="btn btn-primary" aria-label="Submit search">
-              <i class="fas fa-search" aria-hidden="true"></i>
-            </button>
-          </div>
-        </div>
-      </form>
-    </div>
-    <div class="col-12 col-md-3 text-center">
-      <button class="btn btn-outline-secondary" aria-label="Toggle filter options">
-        <i class="fas fa-filter fa-2x" aria-hidden="true"></i>
-      </button>
-    </div>
-  </header>
 
-  <div class="row">
-    <!-- Filter Sidebar -->
-    <aside class="col-12 col-md-3 mb-3" id="filter-panel">
-      <form method="GET" id="filter-form">
-        <h5>Filters</h5>
-        <!-- Preserve search query if exists -->
-        <input type="hidden" name="q" value="{{ current_filters.q }}">
-        <!-- Category filter (checkboxes) -->
-        <div class="form-group">
-          <label>Category</label>
-          {% for category in categories %}
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="category" value="{{ category }}" id="cat-{{ forloop.counter }}"
-              {% if category in filter_category %} checked {% endif %}>
-            <label class="form-check-label" for="cat-{{ forloop.counter }}">{{ category }}</label>
+    <header class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4">
+        {# Header content (buttons, search, filter) remains the same #}
+         {% if user.is_authenticated %}
+         <div class="mb-2 mb-md-0 me-md-3">
+             <a href="{% url 'marketplace:product-create' %}?is_public=true" class="btn btn-primary" style="background-color: #efaca4; border-color: #efaca4;" aria-label="List an Item">
+                 <i class="fas fa-plus" aria-hidden="true"></i> List an Item
+             </a>
+             <a href="{% url 'marketplace:product-create' %}?is_public=false" class="btn btn-outline-secondary ms-2" aria-label="Add to Closet">
+                 <i class="fas fa-warehouse" aria-hidden="true"></i> Add to Closet
+             </a>
+         </div>
+         {% else %}
+          <div></div> {# Placeholder #}
+         {% endif %}
+
+         <div class="flex-grow-1 mx-md-3 position-relative mb-2 mb-md-0" style="max-width: 500px;">
+             <form method="GET" action="{% url 'marketplace:home' %}" role="search" aria-label="Search Products" id="search-form">
+                 <div class="input-group">
+                     <input type="text" name="q" placeholder="Search items..." value="{{ current_filters.q|default:'' }}" class="form-control" id="search-input" aria-label="Search items" autocomplete="off">
+                     <button type="submit" class="btn btn-outline-secondary" aria-label="Submit search">
+                         <i class="fas fa-search" aria-hidden="true"></i>
+                     </button>
+                      <button type="button" class="btn btn-outline-secondary ms-2" data-bs-toggle="modal" data-bs-target="#filterModal" aria-label="Show filters">
+                         <i class="fas fa-filter" aria-hidden="true"></i> <span class="d-none d-lg-inline">Filters</span>
+                     </button>
+                 </div>
+             </form>
+             <div id="autocomplete-suggestions-list" class="autocomplete-suggestions list-group" style="display: none;">
+                 {# Suggestions loaded here #}
+             </div>
+         </div>
+
+         {% if user.is_authenticated %}
+            <span class="text-muted d-none d-lg-block">Welcome, {{ user.username }}!</span>
+         {% endif %}
+    </header>
+
+    <section>
+        <div class="row search-results row-cols-2 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3" aria-label="Product Listings">
+          {% for product in products %}
+          <div class="col">
+              <article class="card h-100 shadow-sm position-relative product-card"> {# Added class for potential styling #}
+                  <div class="card-img-container" style="background-color: #f8f9fa;">
+                      <a href="{% url 'marketplace:product-detail' product.pk %}" aria-label="View details for {{ product.title }}">
+                          {# Use the pre-calculated primary_image_url #}
+                          <img src="{{ product.primary_image_url }}" class="card-img-top" alt="" style="aspect-ratio: 1 / 1; object-fit: contain;"> {# Alt text removed for brevity, covered by link #}
+                      </a>
+                  </div>
+                  <div class="card-body d-flex flex-column p-2"> {# Reduced padding #}
+                      <h5 class="card-title fs-6 mb-1">
+                          <a href="{% url 'marketplace:product-detail' product.pk %}" class="text-decoration-none text-dark stretched-link product-title-link">{{ product.title|truncatechars:40 }}</a>
+                      </h5>
+                      <p class="card-text fw-bold mb-1 product-price">{{ product.formatted_price }}</p>
+                      <p class="card-text text-muted small mb-2 product-category">{{ product.get_category_display|default:"" }}</p>
+
+                      {# --- Seller Info & Counts --- #}
+                      <div class="mt-auto d-flex justify-content-between align-items-center border-top pt-2 small">
+                          {# Seller Info #}
+                          <div class="d-flex align-items-center seller-info text-muted" style="min-width: 0;"> {# Allow shrinking #}
+                              <a href="{% url 'user:public_profile' product.seller.username %}" class="d-flex align-items-center text-decoration-none text-muted" title="View {{ product.seller.username }}'s profile">
+                                  <img src="{{ product.seller.profile.get_picture_url }}" class="rounded-circle me-1" alt="" style="width: 20px; height: 20px; object-fit: cover;">
+                                  <span class="text-truncate" style="max-width: 100px;">{{ product.seller.username }}</span> {# Truncate long names #}
+                              </a>
+                          </div>
+
+                          {# Counts - only display if > 0 #}
+                          <div class="d-flex gap-2 product-counts">
+                              {% if product.saved_count > 0 %}
+                                  <span class="badge bg-light text-danger border border-danger-subtle rounded-pill" title="{{ product.saved_count }} saves">
+                                      <i class="fas fa-heart fa-xs"></i> {{ product.saved_count }}
+                                  </span>
+                              {% endif %}
+                              {% if product.cart_count > 0 %}
+                                  <span class="badge bg-light text-primary border border-primary-subtle rounded-pill" title="{{ product.cart_count }} in carts">
+                                      <i class="fas fa-shopping-cart fa-xs"></i> {{ product.cart_count }}
+                                  </span>
+                              {% endif %}
+                          </div>
+                      </div>
+                      {# --- End Seller Info & Counts --- #}
+                  </div> {# End card-body #}
+              </article> {# End card #}
+          </div> {# End col #}
+          {% empty %}
+          <div class="col-12">
+               <div class="alert alert-info text-center" role="alert">
+                 {% if current_filters %}
+                     No products found matching your filters. <a href="{% url 'marketplace:home' %}">Clear filters</a>?
+                 {% else %}
+                     No products listed yet. Why not <a href="{% url 'marketplace:product-create' %}?is_public=true">list one</a>?
+                 {% endif %}
+               </div>
           </div>
           {% endfor %}
-        </div>
-        <!-- Condition filter (checkboxes) -->
-        <div class="form-group">
-          <label>Condition</label>
-          {% for condition in conditions %}
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="condition" value="{{ condition }}" id="cond-{{ forloop.counter }}"
-              {% if condition in filter_condition %} checked {% endif %}>
-            <label class="form-check-label" for="cond-{{ forloop.counter }}">{{ condition }}</label>
-          </div>
-          {% endfor %}
-        </div>
-        <!-- Sold status (checkboxes) -->
-        <div class="form-group">
-          <label>Sold Status</label>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="is_sold" value="true" id="sold-true"
-              {% if 'true' in filter_is_sold %} checked {% endif %}>
-            <label class="form-check-label" for="sold-true">Sold</label>
-          </div>
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" name="is_sold" value="false" id="sold-false"
-              {% if 'false' in filter_is_sold %} checked {% endif %}>
-            <label class="form-check-label" for="sold-false">Available</label>
-          </div>
-        </div>
-        <!-- Size filter -->
-        <div class="form-group">
-          <label>Size</label>
-          {% if sizes %}
-            {% for size in sizes %}
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="size" value="{{ size }}" id="size-{{ forloop.counter }}"
-                {% if current_filters.size == size %} checked {% endif %}>
-              <label class="form-check-label" for="size-{{ forloop.counter }}">{{ size }}</label>
-            </div>
-            {% endfor %}
-          {% else %}
-            <input type="text" name="size" class="form-control" placeholder="Search size" value="{{ current_filters.size }}">
-          {% endif %}
-        </div>
-        <!-- Color filter -->
-        <div class="form-group">
-          <label>Color</label>
-          {% if colors %}
-            {% for color in colors %}
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="color" value="{{ color }}" id="color-{{ forloop.counter }}"
-                {% if current_filters.color == color %} checked {% endif %}>
-              <label class="form-check-label" for="color-{{ forloop.counter }}">{{ color }}</label>
-            </div>
-            {% endfor %}
-          {% else %}
-            <input type="text" name="color" class="form-control" placeholder="Search color" value="{{ current_filters.color }}">
-          {% endif %}
-        </div>
-        <!-- Material filter -->
-        <div class="form-group">
-          <label>Material</label>
-          {% if materials %}
-            {% for material in materials %}
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" name="material" value="{{ material }}" id="material-{{ forloop.counter }}"
-                {% if current_filters.material == material %} checked {% endif %}>
-              <label class="form-check-label" for="material-{{ forloop.counter }}">{{ material }}</label>
-            </div>
-            {% endfor %}
-          {% else %}
-            <input type="text" name="material" class="form-control" placeholder="Search material" value="{{ current_filters.material }}">
-          {% endif %}
-        </div>
-        <!-- Sort dropdown -->
-        <div class="form-group">
-          <label for="sortSelect">Sort by</label>
-          <select id="sortSelect" class="form-control" name="sort">
-            <option value="">Default</option>
-            <option value="title_asc" {% if current_filters.sort == 'title_asc' %}selected{% endif %}>Title (A-Z)</option>
-            <option value="title_desc" {% if current_filters.sort == 'title_desc' %}selected{% endif %}>Title (Z-A)</option>
-            <option value="price_asc" {% if current_filters.sort == 'price_asc' %}selected{% endif %}>Price (Low to High)</option>
-            <option value="price_desc" {% if current_filters.sort == 'price_desc' %}selected{% endif %}>Price (High to Low)</option>
-            <option value="created_at_desc" {% if current_filters.sort == 'created_at_desc' %}selected{% endif %}>Newest First</option>
-            <option value="created_at_asc" {% if current_filters.sort == 'created_at_asc' %}selected{% endif %}>Oldest First</option>
-          </select>
-        </div>
-        <button type="submit" class="btn btn-primary" aria-label="Apply filters">Apply Filters</button>
-        <a href="{% url 'marketplace:home' %}" class="btn btn-link" aria-label="Clear filters">Clear Filters</a>
-      </form>
-    </aside>
-    <!-- Product Listing Section -->
-    <section class="col-12 col-md-9">
-      <section class="row search-results" aria-label="Product Listings">
-        {% for product in products %}
-        <article class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
-          <div class="card h-100">
-            <img src="{{ product.primary_image.image.url|default:'/static/images/placeholder.png' }}" class="card-img-top img-fluid" alt="{{ product.title }}">
-            <div class="card-body d-flex flex-column">
-              <h5 class="card-title">
-                <a href="{% url 'marketplace:product-detail' product.pk %}">{{ product.title }}</a>
-              </h5>
-              <p class="card-text mb-1">{{ product.formatted_price }}</p>
-              <p class="card-text text-muted">Available: {{ product.quantity }}</p>
-              <p class="card-text text-muted">{{ product.get_category_display }}</p>
-              <a href="{% url 'marketplace:product-detail' product.pk %}" class="mt-auto btn btn-outline-primary" aria-label="View details of {{ product.title }}">
-                View Details <i class="fas fa-arrow-right" aria-hidden="true"></i>
-              </a>
-            </div>
-          </div>
-        </article>
-        {% empty %}
-        <div class="col-12">
-          <p>No products found.</p>
-        </div>
-        {% endfor %}
-      </section>
-      {% if is_paginated %}
-      <nav aria-label="Page navigation">
-        <ul class="pagination justify-content-center">
-          {% if page_obj.has_previous %}
-          <li class="page-item">
-            <a class="page-link" href="?{% querystring current_filters page=page_obj.previous_page_number %}" aria-label="Previous">
-              <span aria-hidden="true">&laquo;</span>
-            </a>
-          </li>
-          {% else %}
-          <li class="page-item disabled">
-            <span class="page-link" aria-hidden="true">&laquo;</span>
-          </li>
-          {% endif %}
-          {% for num in paginator.page_range %}
-          {% if page_obj.number == num %}
-          <li class="page-item active" aria-current="page"><span class="page-link">{{ num }}</span></li>
-          {% else %}
-          <li class="page-item"><a class="page-link" href="?{% querystring current_filters page=num %}">{{ num }}</a></li>
-          {% endif %}
-          {% endfor %}
-          {% if page_obj.has_next %}
-          <li class="page-item">
-            <a class="page-link" href="?{% querystring current_filters page=page_obj.next_page_number %}" aria-label="Next">
-              <span aria-hidden="true">&raquo;</span>
-            </a>
-          </li>
-          {% else %}
-          <li class="page-item disabled">
-            <span class="page-link" aria-hidden="true">&raquo;</span>
-          </li>
-          {% endif %}
-        </ul>
-      </nav>
-      {% endif %}
+        </div> {# End row #}
     </section>
-  </div>
+
+    {# Pagination (remains the same) #}
+    {% if is_paginated %}
+    <nav aria-label="Page navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                 <a class="page-link" href="?{% query_transform page=page_obj.previous_page_number %}" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                 </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link" aria-hidden="true">&laquo;</span>
+            </li>
+            {% endif %}
+
+            <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ paginator.num_pages }}</span></li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                 <a class="page-link" href="?{% query_transform page=page_obj.next_page_number %}" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                 </a>
+            </li>
+            {% else %}
+            <li class="page-item disabled">
+                <span class="page-link" aria-hidden="true">&raquo;</span>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+
 </main>
 
-<!-- Inline JS to toggle the filter panel on mobile remains the same -->
+<div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filterModalLabel"><i class="fas fa-filter me-2"></i>Filters & Sort</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="GET" id="filter-form" action="{% url 'marketplace:home' %}">
+          <div class="modal-body">
+            {# Preserve search query if exists #}
+            {% if current_filters.q %}
+            <input type="hidden" name="q" value="{{ current_filters.q }}">
+            {% endif %}
+
+            <div class="row">
+                <div class="col-md-6">
+                    {# Category filter #}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Category</label>
+                        {% for value, display in categories %}
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" name="category" value="{{ value }}" id="cat-{{ value }}"
+                            {% if value in filter_category %} checked {% endif %}>
+                          <label class="form-check-label" for="cat-{{ value }}">{{ display }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                     {# Condition filter #}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Condition</label>
+                        {% for value, display in conditions %}
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" name="condition" value="{{ value }}" id="cond-{{ value }}"
+                            {% if value in filter_condition %} checked {% endif %}>
+                          <label class="form-check-label" for="cond-{{ value }}">{{ display }}</label>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    {# Sold status #}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Availability</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_sold" value="false" id="sold-false"
+                            {% if 'false' in filter_is_sold %} checked {% endif %}>
+                            <label class="form-check-label" for="sold-false">Available</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_sold" value="true" id="sold-true"
+                            {% if 'true' in filter_is_sold %} checked {% endif %}>
+                            <label class="form-check-label" for="sold-true">Sold</label>
+                        </div>
+                        <small class="form-text text-muted">Check both or neither to see all.</small>
+                    </div>
+
+                </div> {# End col-md-6 #}
+
+                <div class="col-md-6">
+                     {# Size filter #}
+                    <div class="mb-3">
+                      <label class="form-label fw-bold">Size</label>
+                      {% if show_size_checkboxes %}
+                        {% for size in sizes %}
+                        <div class="form-check form-check-inline">
+                          <input class="form-check-input" type="checkbox" name="size" value="{{ size }}" id="size-{{ forloop.counter }}"
+                            {% if size == filter_size %} checked {% endif %}> {# Adjust if multiple sizes allowed #}
+                          <label class="form-check-label" for="size-{{ forloop.counter }}">{{ size }}</label>
+                        </div>
+                        {% endfor %}
+                         {# Add 'Other' text input if needed #}
+                         {# <input type="text" name="size_other" class="form-control form-control-sm mt-2" placeholder="Other size..."> #}
+                      {% else %}
+                        <input type="text" name="size" class="form-control form-control-sm" placeholder="Enter size (e.g., M, 10, Large)" value="{{ filter_size }}">
+                      {% endif %}
+                    </div>
+
+                    {# Color filter #}
+                    <div class="mb-3">
+                      <label class="form-label fw-bold">Color</label>
+                      {% if show_color_checkboxes %}
+                         <div style="max-height: 150px; overflow-y: auto; border: 1px solid #eee; padding: 5px;">
+                         {% for color in colors %}
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="color" value="{{ color }}" id="color-{{ forloop.counter }}"
+                                {% if color == filter_color %} checked {% endif %}> {# Adjust if multiple #}
+                              <label class="form-check-label" for="color-{{ forloop.counter }}">{{ color|capfirst }}</label>
+                            </div>
+                         {% endfor %}
+                         </div>
+                      {% else %}
+                        <input type="text" name="color" class="form-control form-control-sm" placeholder="Enter color (e.g., Blue, Red)" value="{{ filter_color }}">
+                      {% endif %}
+                    </div>
+
+                     {# Material filter #}
+                    <div class="mb-3">
+                      <label class="form-label fw-bold">Material</label>
+                      {% if show_material_checkboxes %}
+                         {% for material in materials %}
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="material" value="{{ material }}" id="material-{{ forloop.counter }}"
+                                {% if material == filter_material %} checked {% endif %}> {# Adjust if multiple #}
+                              <label class="form-check-label" for="material-{{ forloop.counter }}">{{ material|capfirst }}</label>
+                            </div>
+                         {% endfor %}
+                      {% else %}
+                        <input type="text" name="material" class="form-control form-control-sm" placeholder="Enter material (e.g., Cotton, Silk)" value="{{ filter_material }}">
+                      {% endif %}
+                    </div>
+                    
+                    
+                    {# Sort dropdown #}
+                    <div class="mb-3">
+                      <label for="sortSelectModal" class="form-label fw-bold">Sort by</label>
+                      <select id="sortSelectModal" class="form-select form-select-sm" name="sort">
+                          <option value="" {% if not filter_sort %}selected{% endif %}>Default (Newest)</option>
+                          <option value="price_asc" {% if filter_sort == 'price_asc' %}selected{% endif %}>Price (Low to High)</option>
+                          <option value="price_desc" {% if filter_sort == 'price_desc' %}selected{% endif %}>Price (High to Low)</option>
+                           <option value="created_at_asc" {% if filter_sort == 'created_at_asc' %}selected{% endif %}>Oldest First</option>
+                          <option value="title_asc" {% if filter_sort == 'title_asc' %}selected{% endif %}>Title (A-Z)</option>
+                          <option value="title_desc" {% if filter_sort == 'title_desc' %}selected{% endif %}>Title (Z-A)</option>
+                          {# Add more sort options if needed #}
+                      </select>
+                    </div>
+
+                </div> {# End col-md-6 #}
+            </div> {# End row #}
+
+          </div> {# End modal-body #}
+          <div class="modal-footer justify-content-between">
+             <a href="{% url 'marketplace:home' %}{% if current_filters.q %}?q={{ current_filters.q }}{% endif %}" class="btn btn-outline-secondary" aria-label="Clear filters">
+                 <i class="fas fa-times me-1"></i> Clear All Filters
+             </a>
+            <button type="submit" class="btn btn-primary" style="background-color: #efaca4; border-color: #efaca4;" aria-label="Apply filters">
+                Apply Filters
+            </button>
+          </div>
+      </form> {# End filter-form #}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
 <script>
-document.addEventListener("DOMContentLoaded", function(){
-  const filterButton = document.querySelector("button[aria-label='Toggle filter options']");
-  const filterPanel = document.getElementById("filter-panel");
-  if(window.innerWidth < 768){
-    filterPanel.style.display = "none";
-  }
-  filterButton.addEventListener("click", function(){
-    if(filterPanel.style.display === "none" || filterPanel.style.display === ""){
-      filterPanel.style.display = "block";
-    } else {
-      filterPanel.style.display = "none";
-    }
-  });
+document.addEventListener("DOMContentLoaded", function() {
+    const searchInput = document.getElementById('search-input');
+    const suggestionsList = document.getElementById('autocomplete-suggestions-list');
+    const searchForm = document.getElementById('search-form'); // Get the form
+
+    let debounceTimeout;
+
+    searchInput.addEventListener('input', function() {
+        const query = searchInput.value;
+        clearTimeout(debounceTimeout); // Clear previous timeout
+
+        if (query.length > 1) {
+            suggestionsList.style.display = 'block'; // Show suggestions container
+            suggestionsList.innerHTML = '<div class="list-group-item">Loading...</div>'; // Show loading indicator
+
+            debounceTimeout = setTimeout(() => {
+                fetch(`{% url 'marketplace:autocomplete-suggestions' %}?term=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    suggestionsList.innerHTML = ''; // Clear previous suggestions/loading
+                    if (data.length > 0) {
+                        data.forEach(item => {
+                            const div = document.createElement('div');
+                            div.classList.add('list-group-item', 'list-group-item-action');
+                            div.textContent = item;
+                            div.addEventListener('click', function() {
+                                searchInput.value = item; // Fill input with suggestion
+                                suggestionsList.style.display = 'none'; // Hide suggestions
+                                searchForm.submit(); // Submit the form
+                            });
+                            suggestionsList.appendChild(div);
+                        });
+                    } else {
+                        suggestionsList.innerHTML = '<div class="list-group-item disabled">No suggestions found</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching autocomplete suggestions:', error);
+                    suggestionsList.innerHTML = '<div class="list-group-item disabled">Error loading suggestions</div>';
+                });
+            }, 300); // Debounce time: 300ms
+        } else {
+            suggestionsList.style.display = 'none'; // Hide if query is short
+            suggestionsList.innerHTML = ''; // Clear suggestions
+        }
+    });
+
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!searchInput.contains(event.target) && !suggestionsList.contains(event.target)) {
+            suggestionsList.style.display = 'none';
+        }
+    });
+
+     // Hide suggestions when search input loses focus (optional)
+    // searchInput.addEventListener('blur', function() {
+    //     // Use a small delay to allow clicks on suggestions
+    //     setTimeout(() => {
+    //          if (!suggestionsList.matches(':hover')) { // Don't hide if mouse is over suggestions
+    //              suggestionsList.style.display = 'none';
+    //          }
+    //     }, 150);
+    // });
+
 });
 </script>
 {% endblock %}

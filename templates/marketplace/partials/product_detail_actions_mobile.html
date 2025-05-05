@@ -1,0 +1,41 @@
+{# templates/marketplace/partials/product_detail_actions_mobile.html #}
+{% load static %}
+
+{# Use 'product' passed from include tag #}
+{% if is_seller %}
+    {# Seller sees Edit button #}
+    <div class="d-grid gap-2">
+        {# --- NEW: Show "Make Public" if item is private --- #}
+        {% if not product.is_public %}
+            <a href="{% url 'marketplace:product-update' product.pk %}?make_public=true" class="btn btn-success btn-sm"><i class="fas fa-store me-1"></i> List Publicly</a>
+        {% endif %}
+        {# --- End New --- #}
+       <a href="{% url 'marketplace:product-update' product.pk %}" class="btn btn-brand-secondary btn-sm"><i class="fas fa-edit me-1"></i> Edit Details</a>
+       {# Maybe add delete/replace here too for mobile? #}
+       <a href="{% url 'marketplace:replace_product_image' product.pk %}" class="btn btn-outline-secondary btn-sm"><i class="fas fa-image me-1"></i> Replace Image</a>
+        <a href="{% url 'marketplace:product-delete' product.pk %}" class="btn btn-outline-danger btn-sm"><i class="fas fa-trash me-1"></i> Delete</a>
+   </div>
+{% elif can_purchase %}
+     {# Buyer sees Save, Chat, Add to Cart if available #}
+    <div class="btn-group w-100" role="group">
+        <a href="{% url 'cart:add_to_saved' product.id %}" class="btn btn-outline-secondary btn-save px-3" aria-label="Save">
+            <i class="far fa-heart fa-lg"></i>
+            {# Optional Text: <span class="save-text">Save</span> #}
+        </a>
+        <a href="{% url 'chat:start_chat' seller_id=product.seller.id %}" class="btn btn-brand-secondary" style="flex-grow: 1.5;" aria-label="Chat"> {# Use brand color for chat #}
+             <i class="fas fa-comments me-1"></i> Chat
+        </a>
+        <a href="{% url 'cart:add_to_cart' product.id %}" class="btn btn-brand-primary" style="flex-grow: 2;" aria-label="Add to Cart">
+             <i class="fas fa-shopping-cart me-1"></i> Add to Cart
+        </a>
+    </div>
+{% else %}
+    {# Buyer sees Save and Disabled status if unavailable/sold #}
+     <div class="btn-group w-100" role="group">
+         <a href="{% url 'cart:add_to_saved' product.id %}" class="btn btn-outline-secondary btn-save px-3" aria-label="Save">
+             <i class="far fa-heart fa-lg"></i>
+             {# Optional Text: <span class="save-text">Save</span> #}
+         </a>
+         <button class="btn btn-secondary flex-grow-1" disabled>{% if product.is_sold %}Sold Out{% elif not product.is_public %}Private{% else %}Unavailable{% endif %}</button>
+    </div>
+{% endif %}

@@ -1,0 +1,82 @@
+Database Name - ukay
+Database User-  ukayuser
+Database Password - ukay@2025
+
+run this before gunicorn
+source venv/bin/activate
+
+[Unit]
+Description=gunicorn daemon
+Requires=gunicorn.socket
+After=network.target
+
+[Service]
+User=root
+Group=www-data
+WorkingDirectory=/root/csci42
+ExecStart=/root/csci42/venv/bin/gunicorn \
+          --access-logfile - \
+          --workers 3 \
+          --bind unix:/run/gunicorn.sock \
+          ukay.wsgi:application
+
+
+server {
+    listen 80;
+    server_name ukay.bylam.dev;
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location /static/ {
+        root /root/s;
+    }
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/run/gunicorn.sock;
+    }
+}
+
+sudo systemctl restart gunicorn
+
+
+
+# Grant ownership to your app user and group
+sudo chown -R ukayapp:ukayapp /home/ukayapp/ukayproject
+sudo chown -R ukayapp:www-data /home/ukayapp/static_collected 
+
+# Set permissions for the project directory (allow user/group access)
+sudo find /home/ukayapp/ukayproject -type d -exec chmod 750 {} \;
+sudo find /home/ukayapp/ukayproject -type f -exec chmod 640 {} \;
+
+# Set permissions for static files (allow www-data group to read)
+sudo find /home/ukayapp/static_collected -type d -exec chmod 755 {} \; 
+sudo find /home/ukayapp/static_collected -type f -exec chmod 644 {} \;
+
+# Ensure the home directory itself is accessible by the group if needed (750 or 755)
+sudo chmod 750 /home/ukayapp # Or 755 if `www-data` isn't in the `ukayapp` group
+
+
+sudo chmod +x /home/ukayapp/ukayproject/venv/bin/gunicorn
+# Ensure manage.py is executable by the user
+sudo chmod +x /home/ukayapp/ukayproject/manage.py
+
+
+
+sudo systemctl daemon-reload
+
+sudo systemctl restart gunicorn.socket
+sudo systemctl restart gunicorn.service
+
+sudo systemctl status gunicorn.socket
+sudo systemctl status gunicorn.service
+
+sudo nginx -t
+sudo systemctl restart nginx
+
+sudo systemctl status nginx
+
+sudo nano /etc/nginx/sites-available/ukay
+
+sudo tail /var/log/nginx/error.log
+
+sudo journalctl -u gunicorn -n 100

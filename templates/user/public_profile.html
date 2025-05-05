@@ -1,0 +1,61 @@
+{# templates/user/public_profile.html #}
+{% extends "base.html" %} {# Or your base template #}
+{% load static %}
+
+{% block title %}{{ target_user.username }}'s Profile{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-3 text-center">
+            
+            <img src="{{ target_profile.get_picture_url }}" alt="{{ target_user.username }}'s profile picture" class="img-fluid rounded-circle mb-3" style="width: 150px; height: 150px; object-fit: cover;">
+           
+            <h3>{{ target_user.username }}</h3>
+            {% if is_own_profile %}
+                <a href="{% url 'user:update_profile' %}" class="btn btn-secondary btn-sm mt-2">Edit Your Profile</a>
+            {% endif %}
+        </div>
+        <div class="col-md-9">
+            <h4>Bio</h4>
+            {% if target_profile.bio %}
+                <p>{{ target_profile.bio|linebreaksbr }}</p>
+            {% else %}
+                <p class="text-muted">No bio provided yet.</p>
+            {% endif %}
+
+            <hr>
+
+            <h4>Public Outfits ({{ public_outfits.count }})</h4>
+            {% if public_outfits %}
+                <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
+                    {% for outfit in public_outfits %}
+                    <div class="col">
+                        <div class="card h-100 outfit-card-public">
+                            <a href="{% url 'mix_and_match:preview_outfit' outfit.id %}" class="text-decoration-none text-dark">
+                                <img src="{{ outfit.display_image_url }}" class="card-img-top" alt="Outfit Preview {{ outfit.id }}" style="aspect-ratio: 1 / 1; object-fit: contain; background-color: #f8f9fa;">
+                                <div class="card-body p-2">
+                                    {# You could add more info like item count if needed #}
+                                    <small class="text-muted">Created: {{ outfit.created_at|date:"M d, Y" }}</small>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted">{{ target_user.username }} hasn't shared any public outfits yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .outfit-card-public img {
+        transition: transform 0.2s ease-in-out;
+    }
+    .outfit-card-public:hover img {
+        transform: scale(1.03);
+    }
+</style>
+{% endblock %}
