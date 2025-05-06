@@ -6,7 +6,6 @@
 
 A sustainable fashion marketplace with virtual styling capabilities, promoting ethical consumption through second-hand clothing trade.
 
-![Project Screenshot](static/images/screenshot.png)
 
 ## Features
 - 🛍️ Second-hand clothing marketplace
@@ -47,6 +46,11 @@ A sustainable fashion marketplace with virtual styling capabilities, promoting e
    echo "SECRET_KEY=$(python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')" >> .env
    echo "XENDIT_PUBLIC_API_KEY=<your_public_api_key>" >> .env
    echo "XENDIT_SECRET_API_KEY=<your_secret_api_key>" >> .env
+   echo "BREVO_API_KEY=<brevo_api_key>"  >> .env
+   echo "BREVO_SENDER_EMAIL=<brevo_sender_email>"  >> .env
+   echo "BREVO_SENDER_NAME=<brevo_sender_name>"  >> .env
+   echo "BREVO_SMTP_LOGIN=<brevo_smtp_login>" >> .env
+   echo "GEMINI_API_KEY=<gemini_api_key>" >> .env
    ```
 5. **Database Setup**
    ```bash
